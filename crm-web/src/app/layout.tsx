@@ -1,18 +1,9 @@
-import type { Metadata } from "next";
-import localFont from "next/font/local";
+ï»¿import type { Metadata } from "next";
+import { Inter } from "next/font/google";
 import "./globals.css";
 import Link from "next/link";
 
-const geistSans = localFont({
-  src: "./fonts/GeistVF.woff",
-  variable: "--font-geist-sans",
-  weight: "100 900",
-});
-const geistMono = localFont({
-  src: "./fonts/GeistMonoVF.woff",
-  variable: "--font-geist-mono",
-  weight: "100 900",
-});
+const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "CRM Tool",
@@ -27,7 +18,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen flex flex-col bg-gray-50`}
+        className={`${inter.className} antialiased min-h-screen flex flex-col bg-gray-50`}
       >
         <header className="bg-white shadow">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -56,7 +47,7 @@ export default function RootLayout({
         <footer className="bg-white border-t border-gray-200 mt-auto">
           <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
             <p className="text-center text-sm text-gray-500">
-              © {new Date().getFullYear()} CRM Tool. All rights reserved.
+              &copy; {new Date().getFullYear()} CRM Tool. All rights reserved.
             </p>
           </div>
         </footer>
@@ -64,4 +55,3 @@ export default function RootLayout({
     </html>
   );
 }
-
