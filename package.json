@@ -1,0 +1,22 @@
+{
+  "name": "crm-tool",
+  "version": "1.0.0",
+  "description": "crm tool",
+  "license": "ISC",
+  "author": "Stoyan Bachvarov",
+  "type": "commonjs",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "concurrently \"npm run dev -w crm-web\" \"npm run dev -w crm-mobile\"",
+    "build": "npm run build --workspaces --if-present"
+  },
+  "workspaces": [
+    "crm-mobile",
+    "crm-shared",
+    "crm-web"
+  ],
+  "devDependencies": {
+    "concurrently": "^10.0.3"
+  }
+}
