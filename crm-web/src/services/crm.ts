@@ -2,6 +2,7 @@ import { db } from "@/db";
 import {
   activitiesTable,
   customersTable,
+  notesTable,
   offersTable,
   opportunitiesTable,
   salesRecordsTable,
@@ -142,4 +143,132 @@ export async function getAccessibleCustomer(customerId: number, user: CrmUser) {
     .limit(1);
 
   return customer ?? null;
+}
+
+export async function getManageableSalesReps(user: CrmUser) {
+  const visibleSalesRepIds = await getVisibleSalesRepIds(user);
+
+  return db
+    .select({
+      id: usersTable.id,
+      name: usersTable.name,
+      email: usersTable.email,
+      role: usersTable.role,
+    })
+    .from(usersTable)
+    .where(inArray(usersTable.id, visibleSalesRepIds))
+    .orderBy(usersTable.name);
+}
+
+export async function getCustomerManagementDetail(customerId: number, user: CrmUser) {
+  const visibleSalesRepIds = await getVisibleSalesRepIds(user);
+  const [customer] = await db
+    .select({
+      id: customersTable.id,
+      companyName: customersTable.companyName,
+      industrySector: customersTable.industrySector,
+      status: customersTable.status,
+      deliveryAddress: customersTable.deliveryAddress,
+      administrativeAddress: customersTable.administrativeAddress,
+      communicationAddress: customersTable.communicationAddress,
+      mainContactName: customersTable.mainContactName,
+      contactPosition: customersTable.contactPosition,
+      phone: customersTable.phone,
+      email: customersTable.email,
+      assignedSalesRepId: customersTable.assignedSalesRepId,
+      notes: customersTable.notes,
+      lastActivityDate: customersTable.lastActivityDate,
+      createdAt: customersTable.createdAt,
+      updatedAt: customersTable.updatedAt,
+      salesRepName: usersTable.name,
+    })
+    .from(customersTable)
+    .innerJoin(usersTable, eq(customersTable.assignedSalesRepId, usersTable.id))
+    .where(
+      and(
+        eq(customersTable.id, customerId),
+        inArray(customersTable.assignedSalesRepId, visibleSalesRepIds)
+      )
+    )
+    .limit(1);
+
+  if (!customer) {
+    return null;
+  }
+
+  const [activities, opportunities, offers, salesRecords, notes] = await Promise.all([
+    db
+      .select({
+        id: activitiesTable.id,
+        title: activitiesTable.title,
+        type: activitiesTable.type,
+        startDate: activitiesTable.startDate,
+        status: activitiesTable.status,
+        outcome: activitiesTable.outcome,
+      })
+      .from(activitiesTable)
+      .where(eq(activitiesTable.customerId, customerId))
+      .orderBy(desc(activitiesTable.startDate))
+      .limit(10),
+    db
+      .select({
+        id: opportunitiesTable.id,
+        title: opportunitiesTable.title,
+        estimatedValue: opportunitiesTable.estimatedValue,
+        probability: opportunitiesTable.probability,
+        stage: opportunitiesTable.stage,
+        status: opportunitiesTable.status,
+      })
+      .from(opportunitiesTable)
+      .where(eq(opportunitiesTable.customerId, customerId))
+      .orderBy(desc(opportunitiesTable.updatedAt))
+      .limit(10),
+    db
+      .select({
+        id: offersTable.id,
+        offerNumber: offersTable.offerNumber,
+        title: offersTable.title,
+        amount: offersTable.amount,
+        currency: offersTable.currency,
+        status: offersTable.status,
+      })
+      .from(offersTable)
+      .where(eq(offersTable.customerId, customerId))
+      .orderBy(desc(offersTable.updatedAt))
+      .limit(10),
+    db
+      .select({
+        id: salesRecordsTable.id,
+        amount: salesRecordsTable.amount,
+        currency: salesRecordsTable.currency,
+        saleDate: salesRecordsTable.saleDate,
+        notes: salesRecordsTable.notes,
+      })
+      .from(salesRecordsTable)
+      .where(eq(salesRecordsTable.customerId, customerId))
+      .orderBy(desc(salesRecordsTable.saleDate))
+      .limit(10),
+    db
+      .select({
+        id: notesTable.id,
+        text: notesTable.text,
+        createdAt: notesTable.createdAt,
+        updatedAt: notesTable.updatedAt,
+        ownerName: usersTable.name,
+      })
+      .from(notesTable)
+      .innerJoin(usersTable, eq(notesTable.ownerUserId, usersTable.id))
+      .where(and(eq(notesTable.entityType, "customer"), eq(notesTable.entityId, customerId)))
+      .orderBy(desc(notesTable.createdAt))
+      .limit(10),
+  ]);
+
+  return {
+    customer,
+    activities,
+    opportunities,
+    offers,
+    salesRecords,
+    notes,
+  };
 }

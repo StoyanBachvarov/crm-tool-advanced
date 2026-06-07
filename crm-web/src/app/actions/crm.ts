@@ -10,6 +10,8 @@ import {
 } from "@/db/schema";
 import { requireUser } from "@/lib/auth";
 import { getAccessibleCustomer } from "@/services/crm";
+import { canAccessSalesRep } from "@/services/dashboard";
+import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
@@ -41,6 +43,11 @@ function dateValue(formData: FormData, key: string) {
 export async function createCustomer(formData: FormData) {
   const user = await requireUser();
   const now = new Date();
+  const requestedSalesRepId = numberValue(formData, "assignedSalesRepId");
+  const assignedSalesRepId =
+    requestedSalesRepId && (await canAccessSalesRep(user, requestedSalesRepId))
+      ? requestedSalesRepId
+      : user.id;
 
   const [customer] = await db
     .insert(customersTable)
@@ -56,7 +63,7 @@ export async function createCustomer(formData: FormData) {
       administrativeAddress: text(formData, "administrativeAddress"),
       communicationAddress: text(formData, "communicationAddress"),
       notes: text(formData, "notes"),
-      assignedSalesRepId: user.id,
+      assignedSalesRepId,
       updatedAt: now,
     })
     .returning({ id: customersTable.id });
@@ -64,6 +71,67 @@ export async function createCustomer(formData: FormData) {
   revalidatePath("/customers");
   revalidatePath("/dashboard");
   redirect(`/customers/${customer.id}`);
+}
+
+export async function updateCustomer(formData: FormData) {
+  const user = await requireUser();
+  const customerId = Number(requiredText(formData, "customerId"));
+  const customer = await getAccessibleCustomer(customerId, user);
+
+  if (!customer) {
+    redirect("/customers");
+  }
+
+  const requestedSalesRepId = numberValue(formData, "assignedSalesRepId");
+  const assignedSalesRepId =
+    requestedSalesRepId && (await canAccessSalesRep(user, requestedSalesRepId))
+      ? requestedSalesRepId
+      : customer.assignedSalesRepId;
+
+  await db
+    .update(customersTable)
+    .set({
+      companyName: requiredText(formData, "companyName"),
+      industrySector: text(formData, "industrySector"),
+      status: requiredText(formData, "status"),
+      mainContactName: text(formData, "mainContactName"),
+      contactPosition: text(formData, "contactPosition"),
+      phone: text(formData, "phone"),
+      email: text(formData, "email"),
+      deliveryAddress: text(formData, "deliveryAddress"),
+      administrativeAddress: text(formData, "administrativeAddress"),
+      communicationAddress: text(formData, "communicationAddress"),
+      notes: text(formData, "notes"),
+      assignedSalesRepId,
+      updatedAt: new Date(),
+    })
+    .where(eq(customersTable.id, customerId));
+
+  revalidatePath("/customers");
+  revalidatePath(`/customers/${customerId}`);
+  redirect(`/customers/${customerId}`);
+}
+
+export async function archiveCustomer(formData: FormData) {
+  const user = await requireUser();
+  const customerId = Number(requiredText(formData, "customerId"));
+  const customer = await getAccessibleCustomer(customerId, user);
+
+  if (!customer) {
+    redirect("/customers");
+  }
+
+  await db
+    .update(customersTable)
+    .set({
+      status: "inactive customer",
+      updatedAt: new Date(),
+    })
+    .where(eq(customersTable.id, customerId));
+
+  revalidatePath("/customers");
+  revalidatePath(`/customers/${customerId}`);
+  redirect(`/customers/${customerId}`);
 }
 
 export async function createActivity(formData: FormData) {

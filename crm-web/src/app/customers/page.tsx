@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { createCustomer } from "@/app/actions/crm";
 import { requireUser } from "@/lib/auth";
 import { getCrmListData } from "@/services/crm";
 
@@ -17,27 +16,21 @@ export default async function CustomersPage() {
     <div className="mx-auto max-w-7xl space-y-8 px-4 py-8 sm:px-6 lg:px-8">
       <div>
         <p className="text-sm font-medium text-blue-600">CRM</p>
-        <h1 className="text-3xl font-bold text-gray-900">Customers</h1>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Customers</h1>
+            <p className="mt-2 text-gray-600">
+              View and manage customers available to your role.
+            </p>
+          </div>
+          <Link
+            href="/customers/new"
+            className="w-fit rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+          >
+            New customer
+          </Link>
+        </div>
       </div>
-
-      <form action={createCustomer} className="grid gap-4 rounded-lg border border-gray-200 bg-white p-5 shadow-sm lg:grid-cols-4">
-        <input name="companyName" required placeholder="Company name" className="rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900" />
-        <input name="industrySector" placeholder="Industry" className="rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900" />
-        <select name="status" defaultValue="lead" className="rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900">
-          <option value="lead">Lead</option>
-          <option value="prospect">Prospect</option>
-          <option value="active customer">Active customer</option>
-          <option value="inactive customer">Inactive customer</option>
-          <option value="lost customer">Lost customer</option>
-        </select>
-        <input name="mainContactName" placeholder="Main contact" className="rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900" />
-        <input name="contactPosition" placeholder="Contact position" className="rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900" />
-        <input name="phone" placeholder="Phone" className="rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900" />
-        <input name="email" type="email" placeholder="Email" className="rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900" />
-        <input name="deliveryAddress" placeholder="Delivery address" className="rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900" />
-        <textarea name="notes" placeholder="Notes" rows={2} className="rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 lg:col-span-3" />
-        <button className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">Create customer</button>
-      </form>
 
       <div className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
         <table className="min-w-full divide-y divide-gray-200 text-sm">
