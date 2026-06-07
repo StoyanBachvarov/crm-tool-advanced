@@ -31,7 +31,7 @@ export default async function SiteHeader() {
                     ["Activities", "/activities"],
                     ["Opportunities", "/opportunities"],
                     ["Offers", "/offers"],
-                    ["Sales", "/sales-records"],
+                    ["Sales", "/sales"],
                   ].map(([label, href]) => (
                     <Link
                       key={href}

@@ -388,7 +388,8 @@ export async function createSalesRecord(formData: FormData) {
     })
     .returning({ id: salesRecordsTable.id });
 
+  revalidatePath("/sales");
   revalidatePath("/sales-records");
   revalidatePath("/dashboard");
-  redirect(`/sales-records#sale-${sale.id}`);
+  redirect(`/sales/${sale.id}`);
 }

@@ -466,3 +466,59 @@ export async function getOfferManagementDetail(offerId: number, user: CrmUser) {
     salesRecords: saleRows,
   };
 }
+
+export async function getSalesRecordDetail(saleId: number, user: CrmUser) {
+  const visibleSalesRepIds = await getVisibleSalesRepIds(user);
+  const [sale] = await db
+    .select({
+      id: salesRecordsTable.id,
+      customerId: salesRecordsTable.customerId,
+      opportunityId: salesRecordsTable.opportunityId,
+      offerId: salesRecordsTable.offerId,
+      salesRepId: salesRecordsTable.salesRepId,
+      amount: salesRecordsTable.amount,
+      currency: salesRecordsTable.currency,
+      saleDate: salesRecordsTable.saleDate,
+      notes: salesRecordsTable.notes,
+      createdAt: salesRecordsTable.createdAt,
+      customerName: customersTable.companyName,
+      opportunityTitle: opportunitiesTable.title,
+      offerNumber: offersTable.offerNumber,
+      offerTitle: offersTable.title,
+      salesRepName: usersTable.name,
+    })
+    .from(salesRecordsTable)
+    .innerJoin(customersTable, eq(salesRecordsTable.customerId, customersTable.id))
+    .innerJoin(usersTable, eq(salesRecordsTable.salesRepId, usersTable.id))
+    .leftJoin(opportunitiesTable, eq(salesRecordsTable.opportunityId, opportunitiesTable.id))
+    .leftJoin(offersTable, eq(salesRecordsTable.offerId, offersTable.id))
+    .where(
+      and(
+        eq(salesRecordsTable.id, saleId),
+        inArray(salesRecordsTable.salesRepId, visibleSalesRepIds)
+      )
+    )
+    .limit(1);
+
+  if (!sale) {
+    return null;
+  }
+
+  const notes = await db
+    .select({
+      id: notesTable.id,
+      text: notesTable.text,
+      createdAt: notesTable.createdAt,
+      ownerName: usersTable.name,
+    })
+    .from(notesTable)
+    .innerJoin(usersTable, eq(notesTable.ownerUserId, usersTable.id))
+    .where(and(eq(notesTable.entityType, "sales_record"), eq(notesTable.entityId, saleId)))
+    .orderBy(desc(notesTable.createdAt))
+    .limit(10);
+
+  return {
+    sale,
+    notes,
+  };
+}
