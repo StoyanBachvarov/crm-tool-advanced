@@ -31,11 +31,7 @@ function getJwtSecret() {
 }
 
 export async function createSession(userId: number, role: string) {
-  const token = await new SignJWT({ userId, role })
-    .setProtectedHeader({ alg: "HS256" })
-    .setIssuedAt()
-    .setExpirationTime("24h")
-    .sign(getJwtSecret());
+  const token = await createJwtToken(userId, role);
 
   const cookieStore = await cookies();
   cookieStore.set(SESSION_COOKIE_NAME, token, {
@@ -45,6 +41,23 @@ export async function createSession(userId: number, role: string) {
     path: "/",
     maxAge: SESSION_MAX_AGE_SECONDS,
   });
+}
+
+export async function createJwtToken(userId: number, role: string) {
+  return new SignJWT({ userId, role })
+    .setProtectedHeader({ alg: "HS256" })
+    .setIssuedAt()
+    .setExpirationTime("24h")
+    .sign(getJwtSecret());
+}
+
+export async function verifyJwtToken(token: string): Promise<SessionPayload | null> {
+  try {
+    const { payload } = await jwtVerify<SessionPayload>(token, getJwtSecret());
+    return payload;
+  } catch {
+    return null;
+  }
 }
 
 export async function deleteSession() {
@@ -60,12 +73,7 @@ export async function getSessionPayload(): Promise<SessionPayload | null> {
     return null;
   }
 
-  try {
-    const { payload } = await jwtVerify<SessionPayload>(token, getJwtSecret());
-    return payload;
-  } catch {
-    return null;
-  }
+  return verifyJwtToken(token);
 }
 
 export async function getCurrentUser(): Promise<CurrentUser | null> {
