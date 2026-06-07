@@ -32,6 +32,7 @@ export default async function SiteHeader() {
                     ["Opportunities", "/opportunities"],
                     ["Offers", "/offers"],
                     ["Sales", "/sales"],
+                    ["Reports", "/reports"],
                     ...(user.role === "sales_manager" || user.role === "admin"
                       ? [["Team", "/team"]]
                       : []),
