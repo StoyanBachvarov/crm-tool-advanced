@@ -35,6 +35,11 @@ export function getActivityState(activity: {
 }
 
 async function getVisibleSalesRepIds(user: DashboardUser) {
+  if (user.role === "admin") {
+    const users = await db.select({ id: usersTable.id }).from(usersTable);
+    return users.map((visibleUser) => visibleUser.id);
+  }
+
   if (user.role === "sales_manager") {
     const reps = await db
       .select({ id: usersTable.id })
@@ -51,6 +56,11 @@ function containsStatus(value: string | null, expected: string) {
   return value?.toLowerCase() === expected;
 }
 
+function isPendingOffer(status: string | null) {
+  const value = status?.toLowerCase();
+  return value === "draft" || value === "sent";
+}
+
 function hasRecentActivity(
   customerId: number,
   activities: Array<{ customerId: number; startDate: Date; state: ActivityState }>
@@ -63,6 +73,42 @@ function hasRecentActivity(
       activity.state === "completed" &&
       activity.startDate.getTime() >= thirtyDaysAgo
   );
+}
+
+function getLatestCompletedActivityDate(
+  customerId: number,
+  activities: Array<{ customerId: number; startDate: Date; state: ActivityState }>
+) {
+  const completedDates = activities
+    .filter(
+      (activity) =>
+        activity.customerId === customerId && activity.state === "completed"
+    )
+    .map((activity) => activity.startDate);
+
+  if (completedDates.length === 0) {
+    return null;
+  }
+
+  return completedDates.sort((a, b) => b.getTime() - a.getTime())[0];
+}
+
+export async function canAccessSalesRep(user: DashboardUser, salesRepId: number) {
+  if (user.role === "admin" || user.id === salesRepId) {
+    return true;
+  }
+
+  if (user.role !== "sales_manager") {
+    return false;
+  }
+
+  const [rep] = await db
+    .select({ id: usersTable.id })
+    .from(usersTable)
+    .where(and(eq(usersTable.id, salesRepId), eq(usersTable.managerId, user.id)))
+    .limit(1);
+
+  return Boolean(rep);
 }
 
 export async function getDashboardData(user: DashboardUser) {
@@ -104,15 +150,14 @@ export async function getDashboardData(user: DashboardUser) {
         industrySector: customersTable.industrySector,
         status: customersTable.status,
         mainContactName: customersTable.mainContactName,
-        phone: customersTable.phone,
-        email: customersTable.email,
+        lastActivityDate: customersTable.lastActivityDate,
         salesRepName: usersTable.name,
       })
       .from(customersTable)
       .innerJoin(usersTable, eq(customersTable.assignedSalesRepId, usersTable.id))
       .where(inArray(customersTable.assignedSalesRepId, visibleSalesRepIds))
       .orderBy(customersTable.companyName)
-      .limit(8),
+      .limit(10),
     db
       .select({
         id: opportunitiesTable.id,
@@ -134,7 +179,7 @@ export async function getDashboardData(user: DashboardUser) {
         )
       )
       .orderBy(desc(opportunitiesTable.updatedAt))
-      .limit(6),
+      .limit(8),
     db
       .select({
         id: offersTable.id,
@@ -192,9 +237,12 @@ export async function getDashboardData(user: DashboardUser) {
     .filter((activity) => activity.state === "upcoming" || activity.state === "current")
     .sort((a, b) => a.startDate.getTime() - b.startDate.getTime());
 
-  const recentlyCompletedActivities = activities
+  const archiveActivities = activities
+    .filter((activity) => activity.state === "completed" || activity.state === "cancelled")
+    .sort((a, b) => b.startDate.getTime() - a.startDate.getTime());
+
+  const recentlyCompletedActivities = archiveActivities
     .filter((activity) => activity.state === "completed")
-    .sort((a, b) => b.startDate.getTime() - a.startDate.getTime())
     .slice(0, 6);
 
   const customers = assignedCustomers.map((customer) => {
@@ -205,12 +253,12 @@ export async function getDashboardData(user: DashboardUser) {
 
     return {
       ...customer,
+      lastActivityDate:
+        customer.lastActivityDate ??
+        getLatestCompletedActivityDate(customer.id, activities),
       indicators: {
         noRecentActivity: !hasRecentActivity(customer.id, activities),
-        offerPending: customerOffers.some(
-          (offer) =>
-            containsStatus(offer.status, "draft") || containsStatus(offer.status, "sent")
-        ),
+        offerPending: customerOffers.some((offer) => isPendingOffer(offer.status)),
         opportunityWon: customerOpportunities.some(
           (opportunity) =>
             containsStatus(opportunity.status, "won") ||
@@ -230,6 +278,7 @@ export async function getDashboardData(user: DashboardUser) {
     upcomingActivities: activeActivities.filter((activity) => activity.state === "upcoming"),
     currentActivities: activeActivities.filter((activity) => activity.state === "current"),
     recentlyCompletedActivities,
+    archiveActivities,
     assignedCustomers: customers,
     openOpportunities,
     recentOffers,
@@ -238,11 +287,11 @@ export async function getDashboardData(user: DashboardUser) {
 }
 
 export async function getActivityDetail(activityId: number, user: DashboardUser) {
-  const visibleSalesRepIds = await getVisibleSalesRepIds(user);
-
   const [activity] = await db
     .select({
       id: activitiesTable.id,
+      customerId: activitiesTable.customerId,
+      salesRepId: activitiesTable.salesRepId,
       title: activitiesTable.title,
       type: activitiesTable.type,
       description: activitiesTable.description,
@@ -252,27 +301,125 @@ export async function getActivityDetail(activityId: number, user: DashboardUser)
       outcome: activitiesTable.outcome,
       nextAction: activitiesTable.nextAction,
       customerName: customersTable.companyName,
+      customerContactName: customersTable.mainContactName,
       customerEmail: customersTable.email,
       customerPhone: customersTable.phone,
       salesRepName: usersTable.name,
+      salesRepManagerId: usersTable.managerId,
     })
     .from(activitiesTable)
     .innerJoin(customersTable, eq(activitiesTable.customerId, customersTable.id))
     .innerJoin(usersTable, eq(activitiesTable.salesRepId, usersTable.id))
+    .where(eq(activitiesTable.id, activityId))
+    .limit(1);
+
+  if (!activity) {
+    return { status: "not_found" as const, activity: null };
+  }
+
+  const hasAccess =
+    user.role === "admin" ||
+    user.id === activity.salesRepId ||
+    user.id === activity.salesRepManagerId;
+
+  if (!hasAccess) {
+    return { status: "access_denied" as const, activity: null };
+  }
+
+  const [relatedOpportunity] = await db
+    .select({
+      id: opportunitiesTable.id,
+      title: opportunitiesTable.title,
+      stage: opportunitiesTable.stage,
+      status: opportunitiesTable.status,
+    })
+    .from(opportunitiesTable)
+    .where(eq(opportunitiesTable.customerId, activity.customerId))
+    .orderBy(desc(opportunitiesTable.updatedAt))
+    .limit(1);
+
+  const [relatedOffer] = await db
+    .select({
+      id: offersTable.id,
+      offerNumber: offersTable.offerNumber,
+      title: offersTable.title,
+      status: offersTable.status,
+    })
+    .from(offersTable)
+    .where(eq(offersTable.customerId, activity.customerId))
+    .orderBy(desc(offersTable.updatedAt))
+    .limit(1);
+
+  return {
+    status: "ok" as const,
+    activity: {
+      ...activity,
+      state: getActivityState(activity),
+      relatedOpportunity: relatedOpportunity ?? null,
+      relatedOffer: relatedOffer ?? null,
+    },
+  };
+}
+
+export async function getCustomerDetail(customerId: number, user: DashboardUser) {
+  const visibleSalesRepIds = await getVisibleSalesRepIds(user);
+
+  const [customer] = await db
+    .select({
+      id: customersTable.id,
+      companyName: customersTable.companyName,
+      industrySector: customersTable.industrySector,
+      status: customersTable.status,
+      mainContactName: customersTable.mainContactName,
+      contactPosition: customersTable.contactPosition,
+      phone: customersTable.phone,
+      email: customersTable.email,
+      deliveryAddress: customersTable.deliveryAddress,
+      administrativeAddress: customersTable.administrativeAddress,
+      communicationAddress: customersTable.communicationAddress,
+      notes: customersTable.notes,
+      lastActivityDate: customersTable.lastActivityDate,
+      salesRepName: usersTable.name,
+    })
+    .from(customersTable)
+    .innerJoin(usersTable, eq(customersTable.assignedSalesRepId, usersTable.id))
     .where(
       and(
-        eq(activitiesTable.id, activityId),
-        inArray(activitiesTable.salesRepId, visibleSalesRepIds)
+        eq(customersTable.id, customerId),
+        inArray(customersTable.assignedSalesRepId, visibleSalesRepIds)
       )
     )
     .limit(1);
 
-  if (!activity) {
-    return null;
-  }
+  return customer ?? null;
+}
 
-  return {
-    ...activity,
-    state: getActivityState(activity),
-  };
+export async function getOpportunityDetail(opportunityId: number, user: DashboardUser) {
+  const visibleSalesRepIds = await getVisibleSalesRepIds(user);
+
+  const [opportunity] = await db
+    .select({
+      id: opportunitiesTable.id,
+      title: opportunitiesTable.title,
+      description: opportunitiesTable.description,
+      estimatedValue: opportunitiesTable.estimatedValue,
+      probability: opportunitiesTable.probability,
+      stage: opportunitiesTable.stage,
+      status: opportunitiesTable.status,
+      expectedCloseDate: opportunitiesTable.expectedCloseDate,
+      customerName: customersTable.companyName,
+      salesRepName: usersTable.name,
+    })
+    .from(opportunitiesTable)
+    .innerJoin(customersTable, eq(opportunitiesTable.customerId, customersTable.id))
+    .innerJoin(usersTable, eq(opportunitiesTable.salesRepId, usersTable.id))
+    .where(
+      and(
+        eq(opportunitiesTable.id, opportunityId),
+        inArray(opportunitiesTable.salesRepId, visibleSalesRepIds)
+      )
+    )
+    .limit(1);
+
+  return opportunity ?? null;
 }

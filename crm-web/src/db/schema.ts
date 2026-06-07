@@ -25,6 +25,7 @@ export const customersTable = pgTable("customers", {
   email: varchar("email", { length: 255 }),
   assignedSalesRepId: integer("assigned_sales_rep_id").references(() => usersTable.id),
   notes: text("notes"),
+  lastActivityDate: timestamp("last_activity_date"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

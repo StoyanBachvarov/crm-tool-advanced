@@ -10,6 +10,10 @@ function formatDate(date: Date) {
   }).format(date);
 }
 
+function formatOptionalDate(date: Date | null) {
+  return date ? formatDate(date) : "No activity";
+}
+
 function formatTime(date: Date) {
   return new Intl.DateTimeFormat("en", {
     hour: "numeric",
@@ -220,12 +224,12 @@ export default async function DashboardPage() {
           )}
         </Section>
 
-        <Section title="Recently Completed Activities">
-          {data.recentlyCompletedActivities.length === 0 ? (
-            <EmptyState text="No completed activities yet." />
+        <Section title="Archive Activities">
+          {data.archiveActivities.length === 0 ? (
+            <EmptyState text="No completed or cancelled activities yet." />
           ) : (
             <div className="space-y-3">
-              {data.recentlyCompletedActivities.map((activity) => (
+              {data.archiveActivities.map((activity) => (
                 <Link
                   key={activity.id}
                   href={`/activities/${activity.id}`}
@@ -252,14 +256,15 @@ export default async function DashboardPage() {
           )}
         </Section>
 
-        <Section title="Assigned Customers">
+        <Section title="Customer Overview">
           {data.assignedCustomers.length === 0 ? (
             <EmptyState text="No customers assigned." />
           ) : (
             <div className="space-y-3">
               {data.assignedCustomers.map((customer) => (
-                <div
+                <Link
                   key={customer.id}
+                  href={`/customers/${customer.id}`}
                   className="rounded-lg border border-gray-200 bg-white px-4 py-3"
                 >
                   <div className="flex items-start justify-between gap-3">
@@ -268,8 +273,11 @@ export default async function DashboardPage() {
                         {customer.companyName}
                       </h3>
                       <p className="text-sm text-gray-500">
-                        {customer.mainContactName || "No contact"} /{" "}
-                        {customer.salesRepName}
+                        {customer.industrySector || "No industry"} /{" "}
+                        {customer.mainContactName || "No main contact"}
+                      </p>
+                      <p className="mt-1 text-sm text-gray-500">
+                        Last activity: {formatOptionalDate(customer.lastActivityDate)}
                       </p>
                     </div>
                     <span className="rounded-full bg-gray-100 px-2 py-1 text-xs font-medium capitalize text-gray-700">
@@ -290,7 +298,7 @@ export default async function DashboardPage() {
                       <Indicator label="opportunity lost" />
                     )}
                   </div>
-                </div>
+                </Link>
               ))}
             </div>
           )}
@@ -302,8 +310,9 @@ export default async function DashboardPage() {
           ) : (
             <div className="space-y-3">
               {data.openOpportunities.map((opportunity) => (
-                <div
+                <Link
                   key={opportunity.id}
+                  href={`/opportunities/${opportunity.id}`}
                   className="rounded-lg border border-gray-200 bg-white px-4 py-3 text-sm"
                 >
                   <div className="flex justify-between gap-3">
@@ -319,10 +328,27 @@ export default async function DashboardPage() {
                         : "No value"}
                     </span>
                   </div>
-                  <p className="mt-2 text-gray-500">
-                    {opportunity.stage} / {opportunity.probability ?? 0}%
-                  </p>
-                </div>
+                  <dl className="mt-3 grid gap-2 sm:grid-cols-3">
+                    <div>
+                      <dt className="text-gray-500">Stage</dt>
+                      <dd className="font-medium text-gray-900">
+                        {opportunity.stage}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-gray-500">Probability</dt>
+                      <dd className="font-medium text-gray-900">
+                        {opportunity.probability ?? 0}%
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-gray-500">Expected close</dt>
+                      <dd className="font-medium text-gray-900">
+                        {formatOptionalDate(opportunity.expectedCloseDate)}
+                      </dd>
+                    </div>
+                  </dl>
+                </Link>
               ))}
             </div>
           )}
