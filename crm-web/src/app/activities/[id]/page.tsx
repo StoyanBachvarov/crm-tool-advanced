@@ -34,6 +34,17 @@ function DisabledAction({ label }: { label: string }) {
   );
 }
 
+function ActionLink({ href, label }: { href: string; label: string }) {
+  return (
+    <Link
+      href={href}
+      className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:border-blue-300 hover:text-blue-700"
+    >
+      {label}
+    </Link>
+  );
+}
+
 export default async function ActivityPage({
   params,
   searchParams,
@@ -240,10 +251,10 @@ export default async function ActivityPage({
                 </button>
               </form>
               <DisabledAction label="Edit activity" />
-              <DisabledAction label="Schedule follow-up" />
-              <DisabledAction label="Create opportunity" />
-              <DisabledAction label="Create offer" />
-              <DisabledAction label="Register sale" />
+              <ActionLink href="/activities" label="Schedule follow-up" />
+              <ActionLink href="/opportunities" label="Create opportunity" />
+              <ActionLink href="/offers" label="Create offer" />
+              <ActionLink href="/sales-records" label="Register sale" />
             </div>
           </div>
         </div>

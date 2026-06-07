@@ -16,7 +16,7 @@ export default async function SiteHeader() {
             >
               CRM Tool
             </Link>
-            <nav className="ml-6 flex space-x-4">
+            <nav className="ml-6 flex flex-wrap gap-1">
               <Link
                 href="/"
                 className="rounded-md px-3 py-2 font-medium text-gray-700 hover:text-blue-600"
@@ -24,12 +24,24 @@ export default async function SiteHeader() {
                 Home
               </Link>
               {user && (
-                <Link
-                  href="/dashboard"
-                  className="rounded-md px-3 py-2 font-medium text-gray-700 hover:text-blue-600"
-                >
-                  Dashboard
-                </Link>
+                <>
+                  {[
+                    ["Dashboard", "/dashboard"],
+                    ["Customers", "/customers"],
+                    ["Activities", "/activities"],
+                    ["Opportunities", "/opportunities"],
+                    ["Offers", "/offers"],
+                    ["Sales", "/sales-records"],
+                  ].map(([label, href]) => (
+                    <Link
+                      key={href}
+                      href={href}
+                      className="rounded-md px-3 py-2 font-medium text-gray-700 hover:text-blue-600"
+                    >
+                      {label}
+                    </Link>
+                  ))}
+                </>
               )}
             </nav>
           </div>

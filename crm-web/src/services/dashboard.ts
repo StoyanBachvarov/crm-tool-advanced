@@ -34,7 +34,7 @@ export function getActivityState(activity: {
   return activity.startDate.getTime() > Date.now() ? "upcoming" : "current";
 }
 
-async function getVisibleSalesRepIds(user: DashboardUser) {
+export async function getVisibleSalesRepIds(user: DashboardUser) {
   if (user.role === "admin") {
     const users = await db.select({ id: usersTable.id }).from(usersTable);
     return users.map((visibleUser) => visibleUser.id);
