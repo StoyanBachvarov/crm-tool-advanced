@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { getActivityDetail, type ActivityState } from "@/services/dashboard";
+import { NotesPanel } from "@/components/notes/NotesPanel";
 
 function formatDateTime(date: Date) {
   return new Intl.DateTimeFormat("en", {
@@ -216,6 +217,9 @@ export default async function ActivityPage({
               <ActionLink href="/sales-records" label="Register sale" />
           </div>
         </div>
+      </div>
+      <div className="mt-6">
+        <NotesPanel entityType="activity" entityId={activity.id} user={user} redirectTo={`/activities/${activity.id}`} />
       </div>
     </div>
   );

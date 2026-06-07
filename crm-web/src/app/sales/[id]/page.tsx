@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { getSalesRecordDetail } from "@/services/crm";
+import { NotesPanel } from "@/components/notes/NotesPanel";
 
 function formatDate(date: Date) {
   return new Intl.DateTimeFormat("en", { dateStyle: "medium" }).format(date);
@@ -16,7 +17,7 @@ export default async function SaleDetailPage({ params }: { params: Promise<{ id:
   const detail = await getSalesRecordDetail(saleId, user);
   if (!detail) notFound();
 
-  const { sale, notes } = detail;
+  const { sale } = detail;
 
   return (
     <div className="mx-auto max-w-5xl space-y-6 px-4 py-8 sm:px-6 lg:px-8">
@@ -45,17 +46,7 @@ export default async function SaleDetailPage({ params }: { params: Promise<{ id:
           </Link>
         </div>
       </div>
-      <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
-        <h2 className="font-semibold text-gray-900">Note records</h2>
-        <div className="mt-3 space-y-3">
-          {notes.length === 0 ? <p className="text-sm text-gray-500">No note records.</p> : notes.map((note) => (
-            <div key={note.id} className="rounded-md border border-gray-200 px-3 py-2 text-sm">
-              <p className="text-gray-700">{note.text}</p>
-              <p className="mt-1 text-xs text-gray-500">{note.ownerName} / {formatDate(note.createdAt)}</p>
-            </div>
-          ))}
-        </div>
-      </section>
+      <NotesPanel entityType="sales_record" entityId={sale.id} user={user} redirectTo={`/sales/${sale.id}`} />
     </div>
   );
 }

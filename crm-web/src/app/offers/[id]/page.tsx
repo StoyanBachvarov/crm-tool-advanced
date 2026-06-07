@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { getOfferManagementDetail } from "@/services/crm";
 import { OfferStatusBadge } from "@/components/offers/OfferForm";
+import { NotesPanel } from "@/components/notes/NotesPanel";
 
 function formatOptionalDate(date: Date | null) {
   return date ? new Intl.DateTimeFormat("en", { dateStyle: "medium" }).format(date) : "Not set";
@@ -17,7 +18,7 @@ export default async function OfferPage({ params }: { params: Promise<{ id: stri
   const detail = await getOfferManagementDetail(offerId, user);
   if (!detail) notFound();
 
-  const { offer, notes, salesRecords } = detail;
+  const { offer, salesRecords } = detail;
 
   return (
     <div className="mx-auto max-w-6xl space-y-6 px-4 py-8 sm:px-6 lg:px-8">
@@ -64,18 +65,8 @@ export default async function OfferPage({ params }: { params: Promise<{ id: stri
             ))}
           </div>
         </section>
-        <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
-          <h2 className="font-semibold text-gray-900">Note records</h2>
-          <div className="mt-3 space-y-3">
-            {notes.length === 0 ? <p className="text-sm text-gray-500">No note records.</p> : notes.map((note) => (
-              <div key={note.id} className="rounded-md border border-gray-200 px-3 py-2 text-sm">
-                <p className="text-gray-700">{note.text}</p>
-                <p className="mt-1 text-xs text-gray-500">{note.ownerName} / {formatOptionalDate(note.createdAt)}</p>
-              </div>
-            ))}
-          </div>
-        </section>
       </div>
+      <NotesPanel entityType="offer" entityId={offer.id} user={user} redirectTo={`/offers/${offer.id}`} />
     </div>
   );
 }
