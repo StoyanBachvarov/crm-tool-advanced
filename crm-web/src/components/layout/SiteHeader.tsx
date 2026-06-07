@@ -32,6 +32,9 @@ export default async function SiteHeader() {
                     ["Opportunities", "/opportunities"],
                     ["Offers", "/offers"],
                     ["Sales", "/sales"],
+                    ...(user.role === "sales_manager" || user.role === "admin"
+                      ? [["Team", "/team"]]
+                      : []),
                   ].map(([label, href]) => (
                     <Link
                       key={href}
