@@ -3,6 +3,11 @@ import { NextResponse, type NextRequest } from "next/server";
 
 const SESSION_COOKIE_NAME = "session";
 const PUBLIC_PATHS = new Set(["/", "/login", "/register"]);
+const API_CORS_HEADERS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
+  "Access-Control-Allow-Headers": "authorization, content-type",
+};
 
 function getJwtSecret() {
   const secret = process.env.JWT_SECRET;
@@ -16,6 +21,22 @@ function getJwtSecret() {
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
+
+  if (pathname.startsWith("/api/")) {
+    if (request.method === "OPTIONS") {
+      return new NextResponse(null, {
+        status: 204,
+        headers: API_CORS_HEADERS,
+      });
+    }
+
+    const response = NextResponse.next();
+    Object.entries(API_CORS_HEADERS).forEach(([key, value]) => {
+      response.headers.set(key, value);
+    });
+    return response;
+  }
+
   const isPublicPath = PUBLIC_PATHS.has(pathname);
   const token = request.cookies.get(SESSION_COOKIE_NAME)?.value;
 

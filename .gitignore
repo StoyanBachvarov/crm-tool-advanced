@@ -6,3 +6,4 @@
 out/
 build/
 dist/
+.next-dev*.log
