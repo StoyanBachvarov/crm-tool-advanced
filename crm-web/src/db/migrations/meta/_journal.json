@@ -15,6 +15,13 @@
       "when": 1780816925874,
       "tag": "0001_tiresome_jackpot",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1780835949133,
+      "tag": "0002_flimsy_star_brand",
+      "breakpoints": true
     }
   ]
 }

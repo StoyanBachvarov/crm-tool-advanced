@@ -3,6 +3,7 @@
 import { db } from "@/db";
 import {
   activitiesTable,
+  customerAssignmentsHistoryTable,
   customersTable,
   offersTable,
   opportunitiesTable,
@@ -135,6 +136,42 @@ export async function archiveCustomer(formData: FormData) {
 
   revalidatePath("/customers");
   revalidatePath(`/customers/${customerId}`);
+  redirect(`/customers/${customerId}`);
+}
+
+export async function assignCustomer(formData: FormData) {
+  const user = await requireUser();
+  const customerId = Number(requiredText(formData, "customerId"));
+  const newSalesRepId = Number(requiredText(formData, "assignedSalesRepId"));
+  const customer = await getAccessibleCustomer(customerId, user);
+
+  if (!customer || !(await canAccessSalesRep(user, newSalesRepId))) {
+    redirect(`/customers/${customerId}`);
+  }
+
+  const previousSalesRepId = customer.assignedSalesRepId;
+
+  await db
+    .update(customersTable)
+    .set({
+      assignedSalesRepId: newSalesRepId,
+      updatedAt: new Date(),
+    })
+    .where(eq(customersTable.id, customerId));
+
+  if (previousSalesRepId !== newSalesRepId) {
+    await db.insert(customerAssignmentsHistoryTable).values({
+      customerId,
+      previousSalesRepId,
+      newSalesRepId,
+      changedByUserId: user.id,
+    });
+  }
+
+  revalidatePath("/customers");
+  revalidatePath(`/customers/${customerId}`);
+  revalidatePath(`/customers/${customerId}/assign`);
+  revalidatePath("/team");
   redirect(`/customers/${customerId}`);
 }
 

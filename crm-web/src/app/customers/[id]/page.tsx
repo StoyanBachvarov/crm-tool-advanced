@@ -63,6 +63,12 @@ export default async function CustomerPage({
             Archive
           </Link>
           <Link
+            href={`/customers/${customer.id}/assign`}
+            className="rounded-md border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:border-blue-300 hover:text-blue-700"
+          >
+            Assign
+          </Link>
+          <Link
             href={`/activities/new?customerId=${customer.id}`}
             className="rounded-md border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:border-blue-300 hover:text-blue-700"
           >

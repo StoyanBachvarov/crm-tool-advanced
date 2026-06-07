@@ -99,3 +99,12 @@ export const notesTable = pgTable("notes", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
+
+export const customerAssignmentsHistoryTable = pgTable("customer_assignments_history", {
+  id: serial("id").primaryKey(),
+  customerId: integer("customer_id").notNull().references(() => customersTable.id),
+  previousSalesRepId: integer("previous_sales_rep_id").references(() => usersTable.id),
+  newSalesRepId: integer("new_sales_rep_id").notNull().references(() => usersTable.id),
+  changedByUserId: integer("changed_by_user_id").notNull().references(() => usersTable.id),
+  changedAt: timestamp("changed_at").defaultNow().notNull(),
+});

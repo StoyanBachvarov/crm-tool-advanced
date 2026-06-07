@@ -1,6 +1,7 @@
 import { db } from "@/db";
 import {
   activitiesTable,
+  customerAssignmentsHistoryTable,
   customersTable,
   notesTable,
   offersTable,
@@ -143,6 +144,46 @@ export async function getAccessibleCustomer(customerId: number, user: CrmUser) {
     .limit(1);
 
   return customer ?? null;
+}
+
+export async function getAssignableSalesRepsForCustomer(customerId: number, user: CrmUser) {
+  const customer = await getAccessibleCustomer(customerId, user);
+
+  if (!customer) {
+    return null;
+  }
+
+  const visibleSalesRepIds = await getVisibleSalesRepIds(user);
+  const salesReps = await db
+    .select({
+      id: usersTable.id,
+      name: usersTable.name,
+      email: usersTable.email,
+      role: usersTable.role,
+    })
+    .from(usersTable)
+    .where(inArray(usersTable.id, visibleSalesRepIds))
+    .orderBy(usersTable.name);
+
+  const history = await db
+    .select({
+      id: customerAssignmentsHistoryTable.id,
+      previousSalesRepId: customerAssignmentsHistoryTable.previousSalesRepId,
+      newSalesRepId: customerAssignmentsHistoryTable.newSalesRepId,
+      changedAt: customerAssignmentsHistoryTable.changedAt,
+      changedByName: usersTable.name,
+    })
+    .from(customerAssignmentsHistoryTable)
+    .innerJoin(usersTable, eq(customerAssignmentsHistoryTable.changedByUserId, usersTable.id))
+    .where(eq(customerAssignmentsHistoryTable.customerId, customerId))
+    .orderBy(desc(customerAssignmentsHistoryTable.changedAt))
+    .limit(10);
+
+  return {
+    customer,
+    salesReps,
+    history,
+  };
 }
 
 export async function getManageableSalesReps(user: CrmUser) {
