@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { cancelActivity, completeActivity } from "@/app/actions/activities";
 import { requireUser } from "@/lib/auth";
 import { getActivityDetail, type ActivityState } from "@/services/dashboard";
 
@@ -20,18 +19,6 @@ function stateClasses(state: ActivityState) {
   };
 
   return classes[state];
-}
-
-function DisabledAction({ label }: { label: string }) {
-  return (
-    <button
-      type="button"
-      disabled
-      className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm font-medium text-gray-400"
-    >
-      {label}
-    </button>
-  );
 }
 
 function ActionLink({ href, label }: { href: string; label: string }) {
@@ -212,50 +199,21 @@ export default async function ActivityPage({
             </p>
           )}
 
-          <div className="mt-4 grid gap-4 lg:grid-cols-[1fr_auto]">
-            <form action={completeActivity} className="space-y-3">
-              <input type="hidden" name="activityId" value={activity.id} />
-              <label
-                htmlFor="outcome"
-                className="block text-sm font-medium text-gray-700"
-              >
-                Outcome note
-              </label>
-              <textarea
-                id="outcome"
-                name="outcome"
-                rows={3}
-                required
-                disabled={isClosed}
-                className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:bg-gray-100"
-                placeholder="Write what happened and what was agreed."
+          <div className="mt-4 flex flex-wrap items-start gap-2">
+              {!isClosed && (
+                <>
+                  <ActionLink href={`/activities/${activity.id}/edit`} label="Edit activity" />
+                  <ActionLink href={`/activities/${activity.id}/complete`} label="Complete activity" />
+                  <ActionLink href={`/activities/${activity.id}/cancel`} label="Cancel activity" />
+                </>
+              )}
+              <ActionLink
+                href={`/activities/new?customerId=${activity.customerId}`}
+                label="Schedule follow-up"
               />
-              <button
-                type="submit"
-                disabled={isClosed}
-                className="rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:bg-gray-300"
-              >
-                Complete activity
-              </button>
-            </form>
-
-            <div className="flex flex-wrap items-start gap-2 lg:max-w-xs">
-              <form action={cancelActivity}>
-                <input type="hidden" name="activityId" value={activity.id} />
-                <button
-                  type="submit"
-                  disabled={isClosed}
-                  className="rounded-md bg-rose-600 px-3 py-2 text-sm font-medium text-white hover:bg-rose-700 disabled:bg-gray-300"
-                >
-                  Cancel activity
-                </button>
-              </form>
-              <DisabledAction label="Edit activity" />
-              <ActionLink href="/activities" label="Schedule follow-up" />
               <ActionLink href="/opportunities" label="Create opportunity" />
               <ActionLink href="/offers" label="Create offer" />
               <ActionLink href="/sales-records" label="Register sale" />
-            </div>
           </div>
         </div>
       </div>

@@ -3,6 +3,7 @@
 import { db } from "@/db";
 import { activitiesTable, customersTable } from "@/db/schema";
 import { requireUser } from "@/lib/auth";
+import { getAccessibleCustomer } from "@/services/crm";
 import { canAccessSalesRep } from "@/services/dashboard";
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
@@ -70,6 +71,54 @@ export async function completeActivity(formData: FormData) {
     })
     .where(eq(customersTable.id, activity.customerId));
 
+  revalidatePath("/dashboard");
+  revalidatePath(`/activities/${activity.id}`);
+  redirect(`/activities/${activity.id}`);
+}
+
+export async function updateActivity(formData: FormData) {
+  const activityId = Number(formData.get("activityId"));
+  const customerId = Number(formData.get("customerId"));
+
+  if (!Number.isInteger(activityId) || !Number.isInteger(customerId)) {
+    redirect("/activities");
+  }
+
+  const user = await requireUser();
+  const activity = await getEditableActivity(activityId);
+  const customer = await getAccessibleCustomer(customerId, user);
+
+  if (!activity || !customer?.assignedSalesRepId) {
+    redirect(`/activities/${activityId}`);
+  }
+
+  const title = String(formData.get("title") ?? "").trim();
+  const type = String(formData.get("type") ?? "").trim();
+  const startDateValue = String(formData.get("startDate") ?? "").trim();
+
+  if (!title || !type || !startDateValue) {
+    redirect(`/activities/${activityId}/edit?error=missing-fields`);
+  }
+
+  const endDateValue = String(formData.get("endDate") ?? "").trim();
+
+  await db
+    .update(activitiesTable)
+    .set({
+      customerId,
+      salesRepId: customer.assignedSalesRepId,
+      type,
+      title,
+      description: String(formData.get("description") ?? "").trim() || null,
+      startDate: new Date(startDateValue),
+      endDate: endDateValue ? new Date(endDateValue) : null,
+      status: String(formData.get("status") ?? "upcoming").trim() || "upcoming",
+      nextAction: String(formData.get("nextAction") ?? "").trim() || null,
+      updatedAt: new Date(),
+    })
+    .where(eq(activitiesTable.id, activity.id));
+
+  revalidatePath("/activities");
   revalidatePath("/dashboard");
   revalidatePath(`/activities/${activity.id}`);
   redirect(`/activities/${activity.id}`);
