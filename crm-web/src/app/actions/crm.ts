@@ -9,7 +9,11 @@ import {
   salesRecordsTable,
 } from "@/db/schema";
 import { requireUser } from "@/lib/auth";
-import { getAccessibleCustomer, getAccessibleOpportunity } from "@/services/crm";
+import {
+  getAccessibleCustomer,
+  getAccessibleOffer,
+  getAccessibleOpportunity,
+} from "@/services/crm";
 import { canAccessSalesRep } from "@/services/dashboard";
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
@@ -288,7 +292,77 @@ export async function createOffer(formData: FormData) {
 
   revalidatePath("/offers");
   revalidatePath("/dashboard");
-  redirect(`/offers#offer-${offer.id}`);
+  redirect(`/offers/${offer.id}`);
+}
+
+export async function updateOffer(formData: FormData) {
+  const user = await requireUser();
+  const offerId = Number(requiredText(formData, "offerId"));
+  const customerId = Number(requiredText(formData, "customerId"));
+  const [offer, customer] = await Promise.all([
+    getAccessibleOffer(offerId, user),
+    getAccessibleCustomer(customerId, user),
+  ]);
+
+  if (!offer || !customer) {
+    redirect("/offers");
+  }
+
+  await db
+    .update(offersTable)
+    .set({
+      customerId,
+      opportunityId: numberValue(formData, "opportunityId"),
+      offerNumber: requiredText(formData, "offerNumber"),
+      title: requiredText(formData, "title"),
+      amount: requiredText(formData, "amount"),
+      currency: requiredText(formData, "currency"),
+      status: requiredText(formData, "status"),
+      validUntilDate: dateValue(formData, "validUntilDate"),
+      notes: text(formData, "notes"),
+      updatedAt: new Date(),
+    })
+    .where(eq(offersTable.id, offerId));
+
+  revalidatePath("/offers");
+  revalidatePath(`/offers/${offerId}`);
+  revalidatePath("/dashboard");
+  redirect(`/offers/${offerId}`);
+}
+
+export async function sendOffer(formData: FormData) {
+  await updateOfferStatus(formData, "sent");
+}
+
+export async function acceptOffer(formData: FormData) {
+  await updateOfferStatus(formData, "accepted");
+}
+
+export async function rejectOffer(formData: FormData) {
+  await updateOfferStatus(formData, "rejected");
+}
+
+async function updateOfferStatus(formData: FormData, status: string) {
+  const user = await requireUser();
+  const offerId = Number(requiredText(formData, "offerId"));
+  const offer = await getAccessibleOffer(offerId, user);
+
+  if (!offer) {
+    redirect("/offers");
+  }
+
+  await db
+    .update(offersTable)
+    .set({
+      status,
+      updatedAt: new Date(),
+    })
+    .where(eq(offersTable.id, offerId));
+
+  revalidatePath("/offers");
+  revalidatePath(`/offers/${offerId}`);
+  revalidatePath("/dashboard");
+  redirect(`/offers/${offerId}`);
 }
 
 export async function createSalesRecord(formData: FormData) {
