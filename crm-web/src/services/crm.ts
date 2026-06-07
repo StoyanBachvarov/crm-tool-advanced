@@ -272,3 +272,106 @@ export async function getCustomerManagementDetail(customerId: number, user: CrmU
     notes,
   };
 }
+
+export async function getAccessibleOpportunity(opportunityId: number, user: CrmUser) {
+  const visibleSalesRepIds = await getVisibleSalesRepIds(user);
+  const [opportunity] = await db
+    .select({
+      id: opportunitiesTable.id,
+      customerId: opportunitiesTable.customerId,
+      salesRepId: opportunitiesTable.salesRepId,
+    })
+    .from(opportunitiesTable)
+    .where(
+      and(
+        eq(opportunitiesTable.id, opportunityId),
+        inArray(opportunitiesTable.salesRepId, visibleSalesRepIds)
+      )
+    )
+    .limit(1);
+
+  return opportunity ?? null;
+}
+
+export async function getOpportunityManagementDetail(opportunityId: number, user: CrmUser) {
+  const visibleSalesRepIds = await getVisibleSalesRepIds(user);
+  const [opportunity] = await db
+    .select({
+      id: opportunitiesTable.id,
+      customerId: opportunitiesTable.customerId,
+      salesRepId: opportunitiesTable.salesRepId,
+      title: opportunitiesTable.title,
+      description: opportunitiesTable.description,
+      estimatedValue: opportunitiesTable.estimatedValue,
+      probability: opportunitiesTable.probability,
+      stage: opportunitiesTable.stage,
+      status: opportunitiesTable.status,
+      expectedCloseDate: opportunitiesTable.expectedCloseDate,
+      createdAt: opportunitiesTable.createdAt,
+      updatedAt: opportunitiesTable.updatedAt,
+      customerName: customersTable.companyName,
+      salesRepName: usersTable.name,
+    })
+    .from(opportunitiesTable)
+    .innerJoin(customersTable, eq(opportunitiesTable.customerId, customersTable.id))
+    .innerJoin(usersTable, eq(opportunitiesTable.salesRepId, usersTable.id))
+    .where(
+      and(
+        eq(opportunitiesTable.id, opportunityId),
+        inArray(opportunitiesTable.salesRepId, visibleSalesRepIds)
+      )
+    )
+    .limit(1);
+
+  if (!opportunity) {
+    return null;
+  }
+
+  const [activities, offers, notes] = await Promise.all([
+    db
+      .select({
+        id: activitiesTable.id,
+        title: activitiesTable.title,
+        type: activitiesTable.type,
+        startDate: activitiesTable.startDate,
+        status: activitiesTable.status,
+      })
+      .from(activitiesTable)
+      .where(eq(activitiesTable.customerId, opportunity.customerId))
+      .orderBy(desc(activitiesTable.startDate))
+      .limit(10),
+    db
+      .select({
+        id: offersTable.id,
+        offerNumber: offersTable.offerNumber,
+        title: offersTable.title,
+        amount: offersTable.amount,
+        currency: offersTable.currency,
+        status: offersTable.status,
+        validUntilDate: offersTable.validUntilDate,
+      })
+      .from(offersTable)
+      .where(eq(offersTable.opportunityId, opportunityId))
+      .orderBy(desc(offersTable.updatedAt))
+      .limit(10),
+    db
+      .select({
+        id: notesTable.id,
+        text: notesTable.text,
+        createdAt: notesTable.createdAt,
+        ownerName: usersTable.name,
+      })
+      .from(notesTable)
+      .innerJoin(usersTable, eq(notesTable.ownerUserId, usersTable.id))
+      .where(and(eq(notesTable.entityType, "opportunity"), eq(notesTable.entityId, opportunityId)))
+      .orderBy(desc(notesTable.createdAt))
+      .limit(10),
+  ]);
+
+  return {
+    opportunity,
+    activities,
+    offers,
+    notes,
+  };
+}

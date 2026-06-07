@@ -9,7 +9,7 @@ import {
   salesRecordsTable,
 } from "@/db/schema";
 import { requireUser } from "@/lib/auth";
-import { getAccessibleCustomer } from "@/services/crm";
+import { getAccessibleCustomer, getAccessibleOpportunity } from "@/services/crm";
 import { canAccessSalesRep } from "@/services/dashboard";
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
@@ -190,6 +190,74 @@ export async function createOpportunity(formData: FormData) {
   revalidatePath("/opportunities");
   revalidatePath("/dashboard");
   redirect(`/opportunities/${opportunity.id}`);
+}
+
+export async function updateOpportunity(formData: FormData) {
+  const user = await requireUser();
+  const opportunityId = Number(requiredText(formData, "opportunityId"));
+  const customerId = Number(requiredText(formData, "customerId"));
+  const [opportunity, customer] = await Promise.all([
+    getAccessibleOpportunity(opportunityId, user),
+    getAccessibleCustomer(customerId, user),
+  ]);
+
+  if (!opportunity || !customer?.assignedSalesRepId) {
+    redirect("/opportunities");
+  }
+
+  await db
+    .update(opportunitiesTable)
+    .set({
+      customerId,
+      salesRepId: customer.assignedSalesRepId,
+      title: requiredText(formData, "title"),
+      description: text(formData, "description"),
+      estimatedValue: text(formData, "estimatedValue"),
+      probability: numberValue(formData, "probability"),
+      stage: requiredText(formData, "stage"),
+      status: requiredText(formData, "status"),
+      expectedCloseDate: dateValue(formData, "expectedCloseDate"),
+      updatedAt: new Date(),
+    })
+    .where(eq(opportunitiesTable.id, opportunityId));
+
+  revalidatePath("/opportunities");
+  revalidatePath(`/opportunities/${opportunityId}`);
+  revalidatePath("/dashboard");
+  redirect(`/opportunities/${opportunityId}`);
+}
+
+export async function closeOpportunityWon(formData: FormData) {
+  await closeOpportunity(formData, "won", "Won");
+}
+
+export async function closeOpportunityLost(formData: FormData) {
+  await closeOpportunity(formData, "lost", "Lost");
+}
+
+async function closeOpportunity(formData: FormData, status: string, stage: string) {
+  const user = await requireUser();
+  const opportunityId = Number(requiredText(formData, "opportunityId"));
+  const opportunity = await getAccessibleOpportunity(opportunityId, user);
+
+  if (!opportunity) {
+    redirect("/opportunities");
+  }
+
+  await db
+    .update(opportunitiesTable)
+    .set({
+      status,
+      stage,
+      probability: status === "won" ? 100 : 0,
+      updatedAt: new Date(),
+    })
+    .where(eq(opportunitiesTable.id, opportunityId));
+
+  revalidatePath("/opportunities");
+  revalidatePath(`/opportunities/${opportunityId}`);
+  revalidatePath("/dashboard");
+  redirect(`/opportunities/${opportunityId}`);
 }
 
 export async function createOffer(formData: FormData) {

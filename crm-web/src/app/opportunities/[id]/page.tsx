@@ -1,6 +1,8 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/auth";
-import { getOpportunityDetail } from "@/services/dashboard";
+import { getOpportunityManagementDetail } from "@/services/crm";
+import { StageIndicator } from "@/components/opportunities/OpportunityForm";
 
 function formatOptionalDate(date: Date | null) {
   return date
@@ -23,14 +25,16 @@ export default async function OpportunityPage({
     notFound();
   }
 
-  const opportunity = await getOpportunityDetail(opportunityId, user);
+  const detail = await getOpportunityManagementDetail(opportunityId, user);
 
-  if (!opportunity) {
+  if (!detail) {
     notFound();
   }
 
+  const { opportunity, activities, offers, notes } = detail;
+
   return (
-    <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
+    <div className="mx-auto max-w-6xl space-y-6 px-4 py-8 sm:px-6 lg:px-8">
       <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
         <p className="text-sm font-medium text-blue-600">
           {opportunity.customerName}
@@ -42,6 +46,23 @@ export default async function OpportunityPage({
           <span className="w-fit rounded-full bg-gray-100 px-3 py-1 text-sm font-medium capitalize text-gray-700">
             {opportunity.status}
           </span>
+        </div>
+        <div className="mt-4">
+          <StageIndicator stage={opportunity.stage} />
+        </div>
+        <div className="mt-5 flex flex-wrap gap-2">
+          <Link href={`/opportunities/${opportunity.id}/edit`} className="rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700">
+            Edit opportunity
+          </Link>
+          <Link href={`/opportunities/${opportunity.id}/close-won`} className="rounded-md border border-emerald-200 px-3 py-2 text-sm font-medium text-emerald-700 hover:bg-emerald-50">
+            Close won
+          </Link>
+          <Link href={`/opportunities/${opportunity.id}/close-lost`} className="rounded-md border border-rose-200 px-3 py-2 text-sm font-medium text-rose-700 hover:bg-rose-50">
+            Close lost
+          </Link>
+          <Link href={`/offers/new?customerId=${opportunity.customerId}&opportunityId=${opportunity.id}`} className="rounded-md border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:border-blue-300 hover:text-blue-700">
+            New offer
+          </Link>
         </div>
 
         <dl className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -86,6 +107,53 @@ export default async function OpportunityPage({
           </p>
         </section>
       </div>
+      <div className="grid gap-6 lg:grid-cols-2">
+        <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
+          <h2 className="font-semibold text-gray-900">Related activities</h2>
+          <div className="mt-3 space-y-3">
+            {activities.length === 0 ? (
+              <p className="text-sm text-gray-500">No related activities.</p>
+            ) : (
+              activities.map((activity) => (
+                <Link key={activity.id} href={`/activities/${activity.id}`} className="block rounded-md border border-gray-200 px-3 py-2 text-sm hover:border-blue-300">
+                  <span className="font-medium text-gray-900">{activity.title}</span>
+                  <span className="ml-2 text-gray-500">{activity.type} / {formatOptionalDate(activity.startDate)}</span>
+                </Link>
+              ))
+            )}
+          </div>
+        </section>
+        <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
+          <h2 className="font-semibold text-gray-900">Related offers</h2>
+          <div className="mt-3 space-y-3">
+            {offers.length === 0 ? (
+              <p className="text-sm text-gray-500">No offers linked yet.</p>
+            ) : (
+              offers.map((offer) => (
+                <Link key={offer.id} href={`/offers/${offer.id}`} className="block rounded-md border border-gray-200 px-3 py-2 text-sm hover:border-blue-300">
+                  <span className="font-medium text-gray-900">{offer.offerNumber} / {offer.title}</span>
+                  <span className="ml-2 text-gray-500">{offer.amount} {offer.currency} / {offer.status}</span>
+                </Link>
+              ))
+            )}
+          </div>
+        </section>
+      </div>
+      <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
+        <h2 className="font-semibold text-gray-900">Notes</h2>
+        <div className="mt-3 space-y-3">
+          {notes.length === 0 ? (
+            <p className="text-sm text-gray-500">No notes yet.</p>
+          ) : (
+            notes.map((note) => (
+              <div key={note.id} className="rounded-md border border-gray-200 px-3 py-2 text-sm">
+                <p className="text-gray-700">{note.text}</p>
+                <p className="mt-1 text-xs text-gray-500">{note.ownerName} / {formatOptionalDate(note.createdAt)}</p>
+              </div>
+            ))
+          )}
+        </div>
+      </section>
     </div>
   );
 }
