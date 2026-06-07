@@ -63,9 +63,84 @@ function Indicator({ label }: { label: string }) {
   );
 }
 
-export default async function DashboardPage() {
+function pageNumber(value: string | string[] | undefined) {
+  const raw = Array.isArray(value) ? value[0] : value;
+  const parsed = Number(raw ?? "1");
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : 1;
+}
+
+function PaginationLink({
+  label,
+  page,
+  param,
+  disabled,
+}: {
+  label: string;
+  page: number;
+  param: string;
+  disabled: boolean;
+}) {
+  const href = disabled ? "#" : `/dashboard?${param}=${page}`;
+
+  return (
+    <Link
+      href={href}
+      aria-disabled={disabled}
+      className={`rounded-md border px-3 py-1.5 text-sm font-medium ${
+        disabled
+          ? "pointer-events-none border-gray-200 text-gray-300"
+          : "border-gray-300 text-gray-700 hover:border-blue-300 hover:text-blue-700"
+      }`}
+    >
+      {label}
+    </Link>
+  );
+}
+
+function SectionPager({
+  param,
+  paging,
+}: {
+  param: string;
+  paging: { page: number; totalPages: number; total: number };
+}) {
+  return (
+    <div className="mt-3 flex items-center justify-between gap-3 text-sm text-gray-500">
+      <span>
+        Page {paging.page} of {paging.totalPages} / {paging.total} total
+      </span>
+      <div className="flex gap-2">
+        <PaginationLink
+          label="Previous"
+          page={paging.page - 1}
+          param={param}
+          disabled={paging.page <= 1}
+        />
+        <PaginationLink
+          label="Next"
+          page={paging.page + 1}
+          param={param}
+          disabled={paging.page >= paging.totalPages}
+        />
+      </div>
+    </div>
+  );
+}
+
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const user = await requireUser();
-  const data = await getDashboardData(user);
+  const params = await searchParams;
+  const data = await getDashboardData(user, {
+    customers: { page: pageNumber(params.customersPage), pageSize: 10 },
+    activities: { page: pageNumber(params.activitiesPage), pageSize: 8 },
+    opportunities: { page: pageNumber(params.opportunitiesPage), pageSize: 8 },
+    offers: { page: pageNumber(params.offersPage), pageSize: 6 },
+    salesRecords: { page: pageNumber(params.salesPage), pageSize: 6 },
+  });
 
   return (
     <div className="mx-auto max-w-7xl space-y-8 px-4 py-8 sm:px-6 lg:px-8">
@@ -165,6 +240,7 @@ export default async function DashboardPage() {
             ))
           )}
         </div>
+        <SectionPager param="activitiesPage" paging={data.paging.activeActivities} />
       </section>
 
       <div className="grid gap-8 lg:grid-cols-2">
@@ -254,6 +330,7 @@ export default async function DashboardPage() {
               ))}
             </div>
           )}
+          <SectionPager param="activitiesPage" paging={data.paging.archiveActivities} />
         </Section>
 
         <Section title="Customer Overview">
@@ -302,6 +379,7 @@ export default async function DashboardPage() {
               ))}
             </div>
           )}
+          <SectionPager param="customersPage" paging={data.paging.assignedCustomers} />
         </Section>
 
         <Section title="Open Opportunities">
@@ -352,6 +430,7 @@ export default async function DashboardPage() {
               ))}
             </div>
           )}
+          <SectionPager param="opportunitiesPage" paging={data.paging.openOpportunities} />
         </Section>
 
         <Section title="Recent Offers">
@@ -380,6 +459,7 @@ export default async function DashboardPage() {
               ))}
             </div>
           )}
+          <SectionPager param="offersPage" paging={data.paging.recentOffers} />
         </Section>
 
         <Section title="Recent Sales Records">
@@ -405,6 +485,7 @@ export default async function DashboardPage() {
               ))}
             </div>
           )}
+          <SectionPager param="salesPage" paging={data.paging.recentSalesRecords} />
         </Section>
       </div>
     </div>

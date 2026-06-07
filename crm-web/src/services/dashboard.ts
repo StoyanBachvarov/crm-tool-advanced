@@ -7,7 +7,7 @@ import {
   salesRecordsTable,
   usersTable,
 } from "@/db/schema";
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and, count, desc, eq, inArray, not } from "drizzle-orm";
 
 export type ActivityState = "upcoming" | "current" | "completed" | "cancelled";
 
@@ -15,6 +15,32 @@ type DashboardUser = {
   id: number;
   role: string;
 };
+
+type PageInput = {
+  page: number;
+  pageSize: number;
+};
+
+export type DashboardPagingInput = {
+  customers: PageInput;
+  activities: PageInput;
+  opportunities: PageInput;
+  offers: PageInput;
+  salesRecords: PageInput;
+};
+
+function offset(input: PageInput) {
+  return (input.page - 1) * input.pageSize;
+}
+
+function pagingResult(input: PageInput, total: number) {
+  return {
+    page: input.page,
+    pageSize: input.pageSize,
+    total,
+    totalPages: Math.max(1, Math.ceil(total / input.pageSize)),
+  };
+}
 
 export function getActivityState(activity: {
   startDate: Date;
@@ -111,15 +137,44 @@ export async function canAccessSalesRep(user: DashboardUser, salesRepId: number)
   return Boolean(rep);
 }
 
-export async function getDashboardData(user: DashboardUser) {
+export async function getDashboardData(user: DashboardUser, paging?: DashboardPagingInput) {
   const visibleSalesRepIds = await getVisibleSalesRepIds(user);
+  const page = paging ?? {
+    customers: { page: 1, pageSize: 10 },
+    activities: { page: 1, pageSize: 8 },
+    opportunities: { page: 1, pageSize: 8 },
+    offers: { page: 1, pageSize: 6 },
+    salesRecords: { page: 1, pageSize: 6 },
+  };
+  const activeActivitiesWhere = and(
+    inArray(activitiesTable.salesRepId, visibleSalesRepIds),
+    not(inArray(activitiesTable.status, ["completed", "cancelled"]))
+  );
+  const archiveActivitiesWhere = and(
+    inArray(activitiesTable.salesRepId, visibleSalesRepIds),
+    inArray(activitiesTable.status, ["completed", "cancelled"])
+  );
+  const customersWhere = inArray(customersTable.assignedSalesRepId, visibleSalesRepIds);
+  const opportunitiesWhere = and(
+    inArray(opportunitiesTable.salesRepId, visibleSalesRepIds),
+    eq(opportunitiesTable.status, "open")
+  );
+  const offersWhere = inArray(offersTable.createdByUserId, visibleSalesRepIds);
+  const salesRecordsWhere = inArray(salesRecordsTable.salesRepId, visibleSalesRepIds);
 
   const [
     rawActivities,
+    activeActivitiesTotal,
+    rawArchiveActivities,
+    archiveActivitiesTotal,
     assignedCustomers,
+    assignedCustomersTotal,
     openOpportunities,
+    openOpportunitiesTotal,
     recentOffers,
+    recentOffersTotal,
     recentSalesRecords,
+    recentSalesRecordsTotal,
     allOffers,
     allOpportunities,
   ] = await Promise.all([
@@ -141,8 +196,40 @@ export async function getDashboardData(user: DashboardUser) {
       .from(activitiesTable)
       .innerJoin(customersTable, eq(activitiesTable.customerId, customersTable.id))
       .innerJoin(usersTable, eq(activitiesTable.salesRepId, usersTable.id))
-      .where(inArray(activitiesTable.salesRepId, visibleSalesRepIds))
-      .orderBy(activitiesTable.startDate),
+      .where(activeActivitiesWhere)
+      .orderBy(activitiesTable.startDate)
+      .limit(page.activities.pageSize)
+      .offset(offset(page.activities)),
+    db
+      .select({ value: count() })
+      .from(activitiesTable)
+      .where(activeActivitiesWhere),
+    db
+      .select({
+        id: activitiesTable.id,
+        customerId: activitiesTable.customerId,
+        title: activitiesTable.title,
+        type: activitiesTable.type,
+        description: activitiesTable.description,
+        startDate: activitiesTable.startDate,
+        endDate: activitiesTable.endDate,
+        status: activitiesTable.status,
+        outcome: activitiesTable.outcome,
+        nextAction: activitiesTable.nextAction,
+        customerName: customersTable.companyName,
+        salesRepName: usersTable.name,
+      })
+      .from(activitiesTable)
+      .innerJoin(customersTable, eq(activitiesTable.customerId, customersTable.id))
+      .innerJoin(usersTable, eq(activitiesTable.salesRepId, usersTable.id))
+      .where(archiveActivitiesWhere)
+      .orderBy(desc(activitiesTable.startDate))
+      .limit(page.activities.pageSize)
+      .offset(offset(page.activities)),
+    db
+      .select({ value: count() })
+      .from(activitiesTable)
+      .where(archiveActivitiesWhere),
     db
       .select({
         id: customersTable.id,
@@ -155,9 +242,14 @@ export async function getDashboardData(user: DashboardUser) {
       })
       .from(customersTable)
       .innerJoin(usersTable, eq(customersTable.assignedSalesRepId, usersTable.id))
-      .where(inArray(customersTable.assignedSalesRepId, visibleSalesRepIds))
+      .where(customersWhere)
       .orderBy(customersTable.companyName)
-      .limit(10),
+      .limit(page.customers.pageSize)
+      .offset(offset(page.customers)),
+    db
+      .select({ value: count() })
+      .from(customersTable)
+      .where(customersWhere),
     db
       .select({
         id: opportunitiesTable.id,
@@ -172,14 +264,14 @@ export async function getDashboardData(user: DashboardUser) {
       })
       .from(opportunitiesTable)
       .innerJoin(customersTable, eq(opportunitiesTable.customerId, customersTable.id))
-      .where(
-        and(
-          inArray(opportunitiesTable.salesRepId, visibleSalesRepIds),
-          eq(opportunitiesTable.status, "open")
-        )
-      )
+      .where(opportunitiesWhere)
       .orderBy(desc(opportunitiesTable.updatedAt))
-      .limit(8),
+      .limit(page.opportunities.pageSize)
+      .offset(offset(page.opportunities)),
+    db
+      .select({ value: count() })
+      .from(opportunitiesTable)
+      .where(opportunitiesWhere),
     db
       .select({
         id: offersTable.id,
@@ -194,9 +286,14 @@ export async function getDashboardData(user: DashboardUser) {
       })
       .from(offersTable)
       .innerJoin(customersTable, eq(offersTable.customerId, customersTable.id))
-      .where(inArray(offersTable.createdByUserId, visibleSalesRepIds))
+      .where(offersWhere)
       .orderBy(desc(offersTable.createdAt))
-      .limit(6),
+      .limit(page.offers.pageSize)
+      .offset(offset(page.offers)),
+    db
+      .select({ value: count() })
+      .from(offersTable)
+      .where(offersWhere),
     db
       .select({
         id: salesRecordsTable.id,
@@ -208,9 +305,14 @@ export async function getDashboardData(user: DashboardUser) {
       })
       .from(salesRecordsTable)
       .innerJoin(customersTable, eq(salesRecordsTable.customerId, customersTable.id))
-      .where(inArray(salesRecordsTable.salesRepId, visibleSalesRepIds))
+      .where(salesRecordsWhere)
       .orderBy(desc(salesRecordsTable.saleDate))
-      .limit(6),
+      .limit(page.salesRecords.pageSize)
+      .offset(offset(page.salesRecords)),
+    db
+      .select({ value: count() })
+      .from(salesRecordsTable)
+      .where(salesRecordsWhere),
     db
       .select({
         customerId: offersTable.customerId,
@@ -232,18 +334,14 @@ export async function getDashboardData(user: DashboardUser) {
     ...activity,
     state: getActivityState(activity),
   }));
+  const archiveActivities = rawArchiveActivities.map((activity) => ({
+    ...activity,
+    state: getActivityState(activity),
+  }));
 
   const activeActivities = activities
     .filter((activity) => activity.state === "upcoming" || activity.state === "current")
     .sort((a, b) => a.startDate.getTime() - b.startDate.getTime());
-
-  const archiveActivities = activities
-    .filter((activity) => activity.state === "completed" || activity.state === "cancelled")
-    .sort((a, b) => b.startDate.getTime() - a.startDate.getTime());
-
-  const recentlyCompletedActivities = archiveActivities
-    .filter((activity) => activity.state === "completed")
-    .slice(0, 6);
 
   const customers = assignedCustomers.map((customer) => {
     const customerOffers = allOffers.filter((offer) => offer.customerId === customer.id);
@@ -277,12 +375,22 @@ export async function getDashboardData(user: DashboardUser) {
     activeActivities,
     upcomingActivities: activeActivities.filter((activity) => activity.state === "upcoming"),
     currentActivities: activeActivities.filter((activity) => activity.state === "current"),
-    recentlyCompletedActivities,
+    recentlyCompletedActivities: archiveActivities
+      .filter((activity) => activity.state === "completed")
+      .slice(0, 6),
     archiveActivities,
     assignedCustomers: customers,
     openOpportunities,
     recentOffers,
     recentSalesRecords,
+    paging: {
+      activeActivities: pagingResult(page.activities, activeActivitiesTotal[0]?.value ?? 0),
+      archiveActivities: pagingResult(page.activities, archiveActivitiesTotal[0]?.value ?? 0),
+      assignedCustomers: pagingResult(page.customers, assignedCustomersTotal[0]?.value ?? 0),
+      openOpportunities: pagingResult(page.opportunities, openOpportunitiesTotal[0]?.value ?? 0),
+      recentOffers: pagingResult(page.offers, recentOffersTotal[0]?.value ?? 0),
+      recentSalesRecords: pagingResult(page.salesRecords, recentSalesRecordsTotal[0]?.value ?? 0),
+    },
   };
 }
 
