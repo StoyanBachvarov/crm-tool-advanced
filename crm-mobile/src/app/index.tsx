@@ -1,98 +1,136 @@
-import * as Device from 'expo-device';
-import { Platform, StyleSheet } from 'react-native';
+import { Link } from 'expo-router';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { AnimatedIcon } from '@/components/animated-icon';
-import { HintRow } from '@/components/hint-row';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { WebBadge } from '@/components/web-badge';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
-
-function getDevMenuHint() {
-  if (Platform.OS === 'web') {
-    return <ThemedText type="small">use browser devtools</ThemedText>;
-  }
-  if (Device.isDevice) {
-    return (
-      <ThemedText type="small">
-        shake device or press <ThemedText type="code">m</ThemedText> in terminal
-      </ThemedText>
-    );
-  }
-  const shortcut = Platform.OS === 'android' ? 'cmd+m (or ctrl+m)' : 'cmd+d';
-  return (
-    <ThemedText type="small">
-      press <ThemedText type="code">{shortcut}</ThemedText>
-    </ThemedText>
-  );
-}
+import { useSession } from '@/lib/session';
 
 export default function HomeScreen() {
+  const { isAuthenticated, isLoading, user, logout } = useSession();
+
   return (
-    <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safeArea}>
-        <ThemedView style={styles.heroSection}>
-          <AnimatedIcon />
-          <ThemedText type="title" style={styles.title}>
-            Welcome to&nbsp;Expo
-          </ThemedText>
-        </ThemedView>
+    <SafeAreaView style={styles.screen}>
+      <View style={styles.header}>
+        <Text style={styles.eyebrow}>Field sales workspace</Text>
+        <Text style={styles.title}>Welcome to CRM Mobile</Text>
+        <Text style={styles.subtitle}>
+          Manage assigned customers, active activities, outcomes, and follow-up work from the road.
+        </Text>
+      </View>
 
-        <ThemedText type="code" style={styles.code}>
-          get started
-        </ThemedText>
-
-        <ThemedView type="backgroundElement" style={styles.stepContainer}>
-          <HintRow
-            title="Try editing"
-            hint={<ThemedText type="code">src/app/index.tsx</ThemedText>}
-          />
-          <HintRow title="Dev tools" hint={getDevMenuHint()} />
-          <HintRow
-            title="Fresh start"
-            hint={<ThemedText type="code">npm run reset-project</ThemedText>}
-          />
-        </ThemedView>
-
-        {Platform.OS === 'web' && <WebBadge />}
-      </SafeAreaView>
-    </ThemedView>
+      {isLoading ? (
+        <Text style={styles.muted}>Loading session...</Text>
+      ) : isAuthenticated ? (
+        <View style={styles.panel}>
+          <Text style={styles.panelTitle}>Signed in as {user?.name}</Text>
+          <Text style={styles.muted}>{user?.email}</Text>
+          <Link href="/customers" asChild>
+            <Pressable style={styles.primaryButton}>
+              <Text style={styles.primaryButtonText}>Open Customers</Text>
+            </Pressable>
+          </Link>
+          <Link href="/activities" asChild>
+            <Pressable style={styles.secondaryButton}>
+              <Text style={styles.secondaryButtonText}>Open Activities</Text>
+            </Pressable>
+          </Link>
+          <Pressable onPress={logout} style={styles.logoutButton}>
+            <Text style={styles.logoutText}>Logout</Text>
+          </Pressable>
+        </View>
+      ) : (
+        <View style={styles.panel}>
+          <Text style={styles.panelTitle}>Start your sales day</Text>
+          <Text style={styles.muted}>Login to access protected CRM screens.</Text>
+          <Link href="/login" asChild>
+            <Pressable style={styles.primaryButton}>
+              <Text style={styles.primaryButtonText}>Login</Text>
+            </Pressable>
+          </Link>
+        </View>
+      )}
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  screen: {
     flex: 1,
-    justifyContent: 'center',
-    flexDirection: 'row',
+    padding: 20,
+    gap: 24,
+    backgroundColor: '#F6F7F9',
   },
-  safeArea: {
-    flex: 1,
-    paddingHorizontal: Spacing.four,
-    alignItems: 'center',
-    gap: Spacing.three,
-    paddingBottom: BottomTabInset + Spacing.three,
-    maxWidth: MaxContentWidth,
+  header: {
+    gap: 10,
+    paddingTop: 28,
   },
-  heroSection: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    flex: 1,
-    paddingHorizontal: Spacing.four,
-    gap: Spacing.four,
-  },
-  title: {
-    textAlign: 'center',
-  },
-  code: {
+  eyebrow: {
+    color: '#176B87',
+    fontSize: 13,
+    fontWeight: '800',
     textTransform: 'uppercase',
   },
-  stepContainer: {
-    gap: Spacing.three,
-    alignSelf: 'stretch',
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.four,
-    borderRadius: Spacing.four,
+  title: {
+    color: '#172026',
+    fontSize: 34,
+    lineHeight: 40,
+    fontWeight: '800',
+  },
+  subtitle: {
+    color: '#586370',
+    fontSize: 16,
+    lineHeight: 24,
+  },
+  panel: {
+    gap: 12,
+    padding: 16,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E0E4EA',
+    backgroundColor: '#ffffff',
+  },
+  panelTitle: {
+    color: '#172026',
+    fontSize: 18,
+    fontWeight: '800',
+  },
+  muted: {
+    color: '#586370',
+    fontSize: 15,
+    lineHeight: 22,
+  },
+  primaryButton: {
+    minHeight: 50,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#176B87',
+  },
+  primaryButtonText: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  secondaryButton: {
+    minHeight: 50,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#176B87',
+  },
+  secondaryButtonText: {
+    color: '#176B87',
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  logoutButton: {
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  logoutText: {
+    color: '#B42318',
+    fontSize: 15,
+    fontWeight: '800',
   },
 });
