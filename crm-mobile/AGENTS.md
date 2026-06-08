@@ -395,3 +395,7 @@ React frontend with Next.js backend, communicating via Server Actions.
 -- Database schema design: visualize the main DB tables and their relationships.
 -- Local development setup guide.
 -- Key folders and files and their purpose.
+
+# API Docs
+- Back-end API documentation: http://localhost:3000/api/docs
+- Back-end API source code: ../crm-web/src/app/api
