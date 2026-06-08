@@ -4,6 +4,9 @@
   "description": "crm tool",
   "license": "ISC",
   "author": "Stoyan Bachvarov",
+  "engines": {
+    "node": "20.x"
+  },
   "type": "commonjs",
   "main": "index.js",
   "scripts": {
