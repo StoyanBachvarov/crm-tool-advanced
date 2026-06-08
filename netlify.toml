@@ -1,0 +1,7 @@
+[build]
+  base = "crm-web"
+  command = "npm ci --include=optional && npm run build"
+  publish = ".next"
+
+[build.environment]
+  NODE_VERSION = "20"
