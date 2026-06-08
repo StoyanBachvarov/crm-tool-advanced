@@ -1,4 +1,5 @@
 [build]
+  base = "crm-mobile"
   command = "npm ci && npm run build"
   publish = "dist"
 
