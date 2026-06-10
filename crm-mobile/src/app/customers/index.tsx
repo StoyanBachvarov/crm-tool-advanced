@@ -13,6 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Customer, listCustomers } from '@/lib/api';
 import { formatDate, titleCase } from '@/lib/format';
+import { useResponsiveLayout } from '@/lib/responsive';
 import { ProtectedRoute, useSession } from '@/lib/session';
 
 const pageSize = 10;
@@ -27,6 +28,7 @@ export default function CustomersScreen() {
 
 function CustomersContent() {
   const { token } = useSession();
+  const { containerStyle, isWide } = useResponsiveLayout(1120);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
@@ -77,7 +79,7 @@ function CustomersContent() {
 
   return (
     <SafeAreaView style={styles.screen}>
-      <View style={styles.header}>
+      <View style={[styles.header, containerStyle]}>
         <Text style={styles.title}>Customers</Text>
         <Text style={styles.subtitle}>Assigned customer portfolio</Text>
       </View>
@@ -90,15 +92,23 @@ function CustomersContent() {
         </View>
       ) : (
         <FlatList
+          key={isWide ? 'wide' : 'narrow'}
           data={customers}
           keyExtractor={(item) => String(item.id)}
+          numColumns={isWide ? 2 : 1}
+          columnWrapperStyle={isWide ? styles.columnWrapper : undefined}
           refreshControl={
             <RefreshControl refreshing={isRefreshing} onRefresh={() => loadCustomers(1, true)} />
           }
-          contentContainerStyle={styles.listContent}
+          contentContainerStyle={[styles.listContent, containerStyle]}
           renderItem={({ item }) => (
             <Link href={`/customers/${item.id}`} asChild>
-              <Pressable style={({ pressed }) => [styles.card, pressed && styles.pressed]}>
+              <Pressable
+                style={({ pressed }) => [
+                  styles.card,
+                  isWide && styles.wideCard,
+                  pressed && styles.pressed,
+                ]}>
                 <View style={styles.cardHeader}>
                   <Text style={styles.cardTitle}>{item.companyName}</Text>
                   <Text style={styles.status}>{titleCase(item.status)}</Text>
@@ -156,6 +166,9 @@ const styles = StyleSheet.create({
     gap: 10,
     paddingBottom: 28,
   },
+  columnWrapper: {
+    gap: 10,
+  },
   card: {
     gap: 8,
     padding: 14,
@@ -163,6 +176,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E0E4EA',
     backgroundColor: '#ffffff',
+  },
+  wideCard: {
+    flex: 1,
   },
   cardHeader: {
     flexDirection: 'row',

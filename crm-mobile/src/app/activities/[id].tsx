@@ -19,6 +19,7 @@ import {
   getActivity,
 } from '@/lib/api';
 import { formatDateTime, titleCase } from '@/lib/format';
+import { useResponsiveLayout } from '@/lib/responsive';
 import { ProtectedRoute, useSession } from '@/lib/session';
 
 const activityTypes = ['follow-up task', 'phone call', 'visit', 'meeting', 'email', 'demo', 'other'];
@@ -34,6 +35,7 @@ export default function ActivityDetailsScreen() {
 function ActivityDetailsContent() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { token } = useSession();
+  const { containerStyle, isWide } = useResponsiveLayout(1120);
   const [activity, setActivity] = useState<Activity | null>(null);
   const [outcome, setOutcome] = useState('');
   const [nextAction, setNextAction] = useState('');
@@ -186,7 +188,7 @@ function ActivityDetailsContent() {
 
   return (
     <SafeAreaView style={styles.screen}>
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView contentContainerStyle={[styles.content, containerStyle]}>
         <View style={styles.header}>
           <Text style={styles.title}>{activity.title}</Text>
           <Text style={styles.status}>{titleCase(activity.status)}</Text>
@@ -195,15 +197,17 @@ function ActivityDetailsContent() {
         {error ? <Text style={styles.error}>{error}</Text> : null}
         {notice ? <Text style={styles.notice}>{notice}</Text> : null}
 
-        <Info label="Customer" value={activity.customerName} />
-        <Info label="Contact person" value={activity.customerContactName} />
-        <Info label="Phone" value={activity.customerPhone} />
-        <Info label="Email" value={activity.customerEmail} />
-        <Info label="Activity type" value={titleCase(activity.type)} />
-        <Info label="Date and time" value={formatDateTime(activity.startDate)} />
-        <Info label="Notes" value={activity.description} />
-        <Info label="Status" value={titleCase(activity.state || activity.status)} />
-        <Info label="Outcome" value={activity.outcome} />
+        <View style={[styles.infoGrid, isWide && styles.infoGridWide]}>
+          <Info label="Customer" value={activity.customerName} wide={isWide} />
+          <Info label="Contact person" value={activity.customerContactName} wide={isWide} />
+          <Info label="Phone" value={activity.customerPhone} wide={isWide} />
+          <Info label="Email" value={activity.customerEmail} wide={isWide} />
+          <Info label="Activity type" value={titleCase(activity.type)} wide={isWide} />
+          <Info label="Date and time" value={formatDateTime(activity.startDate)} wide={isWide} />
+          <Info label="Notes" value={activity.description} wide={isWide} />
+          <Info label="Status" value={titleCase(activity.state || activity.status)} wide={isWide} />
+          <Info label="Outcome" value={activity.outcome} wide={isWide} />
+        </View>
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Complete activity</Text>
@@ -292,9 +296,9 @@ function ActivityDetailsContent() {
   );
 }
 
-function Info({ label, value }: { label: string; value?: string | null }) {
+function Info({ label, value, wide = false }: { label: string; value?: string | null; wide?: boolean }) {
   return (
-    <View style={styles.infoCard}>
+    <View style={[styles.infoCard, wide && styles.infoCardWide]}>
       <Text style={styles.label}>{label}</Text>
       <Text style={styles.value}>{value || 'Not set'}</Text>
     </View>
@@ -356,6 +360,17 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E0E4EA',
   },
+  infoGrid: {
+    gap: 10,
+  },
+  infoGridWide: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
+  infoCardWide: {
+    flexBasis: '32%',
+    flexGrow: 1,
+  },
   label: {
     color: '#586370',
     fontSize: 13,
@@ -401,10 +416,12 @@ const styles = StyleSheet.create({
   },
   actionRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 10,
   },
   primaryButton: {
-    flex: 1,
+    flexGrow: 1,
+    flexBasis: 180,
     minHeight: 48,
     borderRadius: 8,
     alignItems: 'center',
@@ -416,7 +433,8 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   dangerButton: {
-    flex: 1,
+    flexGrow: 1,
+    flexBasis: 180,
     minHeight: 48,
     borderRadius: 8,
     alignItems: 'center',

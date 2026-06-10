@@ -2,15 +2,15 @@ import Link from "next/link";
 
 export default function Home() {
   return (
-    <div className="flex flex-col items-center justify-center min-h-[calc(100vh-160px)] py-12 px-4 sm:px-6 lg:px-8">
+    <div className="flex min-h-[calc(100vh-220px)] flex-col items-center justify-center px-4 py-10 sm:min-h-[calc(100vh-160px)] sm:px-6 sm:py-12 lg:px-8">
       <div className="text-center max-w-3xl">
-        <h1 className="text-4xl font-extrabold tracking-tight text-gray-900 sm:text-5xl md:text-6xl">
+        <h1 className="text-3xl font-extrabold tracking-tight text-gray-900 sm:text-5xl md:text-6xl">
           Welcome to the <span className="text-blue-600">Advanced CRM Tool</span>
         </h1>
-        <p className="mt-6 text-xl text-gray-500 max-w-2xl mx-auto">
+        <p className="mx-auto mt-5 max-w-2xl text-base text-gray-500 sm:mt-6 sm:text-xl">
           A comprehensive software product for sales teams to plan, organize, execute, and track their daily work with customers.
         </p>
-        <p className="mt-4 text-md text-gray-500 max-w-2xl mx-auto">
+        <p className="mx-auto mt-4 max-w-2xl text-sm text-gray-500 sm:text-base">
           Manage customers, opportunities, offers, and access real-time insights, whether you are at your desk or in the field.
         </p>
         

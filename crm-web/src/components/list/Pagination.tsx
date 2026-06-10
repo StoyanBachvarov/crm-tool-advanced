@@ -24,7 +24,7 @@ export function Pagination({
   }
 
   return (
-    <div className="flex items-center justify-between gap-3 text-sm text-gray-500">
+    <div className="flex flex-col gap-3 text-sm text-gray-500 sm:flex-row sm:items-center sm:justify-between">
       <span>Page {paging.page} of {paging.totalPages} / {paging.total} total</span>
       <div className="flex gap-2">
         <Link

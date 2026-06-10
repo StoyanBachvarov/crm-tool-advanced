@@ -2,52 +2,56 @@ import { Link } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { useResponsiveLayout } from '@/lib/responsive';
 import { useSession } from '@/lib/session';
 
 export default function HomeScreen() {
   const { isAuthenticated, isLoading, user, logout } = useSession();
+  const { containerStyle, isWide } = useResponsiveLayout(960);
 
   return (
     <SafeAreaView style={styles.screen}>
-      <View style={styles.header}>
-        <Text style={styles.eyebrow}>Field sales workspace</Text>
-        <Text style={styles.title}>Welcome to CRM Mobile</Text>
-        <Text style={styles.subtitle}>
-          Manage assigned customers, active activities, outcomes, and follow-up work from the road.
-        </Text>
-      </View>
+      <View style={[styles.content, containerStyle, isWide && styles.wideContent]}>
+        <View style={[styles.header, isWide && styles.wideHeader]}>
+          <Text style={styles.eyebrow}>Field sales workspace</Text>
+          <Text style={[styles.title, isWide && styles.wideTitle]}>Welcome to CRM Mobile</Text>
+          <Text style={styles.subtitle}>
+            Manage assigned customers, active activities, outcomes, and follow-up work from the road.
+          </Text>
+        </View>
 
-      {isLoading ? (
-        <Text style={styles.muted}>Loading session...</Text>
-      ) : isAuthenticated ? (
-        <View style={styles.panel}>
-          <Text style={styles.panelTitle}>Signed in as {user?.name}</Text>
-          <Text style={styles.muted}>{user?.email}</Text>
-          <Link href="/customers" asChild>
-            <Pressable style={styles.primaryButton}>
-              <Text style={styles.primaryButtonText}>Open Customers</Text>
+        {isLoading ? (
+          <Text style={styles.muted}>Loading session...</Text>
+        ) : isAuthenticated ? (
+          <View style={styles.panel}>
+            <Text style={styles.panelTitle}>Signed in as {user?.name}</Text>
+            <Text style={styles.muted}>{user?.email}</Text>
+            <Link href="/customers" asChild>
+              <Pressable style={styles.primaryButton}>
+                <Text style={styles.primaryButtonText}>Open Customers</Text>
+              </Pressable>
+            </Link>
+            <Link href="/activities" asChild>
+              <Pressable style={styles.secondaryButton}>
+                <Text style={styles.secondaryButtonText}>Open Activities</Text>
+              </Pressable>
+            </Link>
+            <Pressable onPress={logout} style={styles.logoutButton}>
+              <Text style={styles.logoutText}>Logout</Text>
             </Pressable>
-          </Link>
-          <Link href="/activities" asChild>
-            <Pressable style={styles.secondaryButton}>
-              <Text style={styles.secondaryButtonText}>Open Activities</Text>
-            </Pressable>
-          </Link>
-          <Pressable onPress={logout} style={styles.logoutButton}>
-            <Text style={styles.logoutText}>Logout</Text>
-          </Pressable>
-        </View>
-      ) : (
-        <View style={styles.panel}>
-          <Text style={styles.panelTitle}>Start your sales day</Text>
-          <Text style={styles.muted}>Login to access protected CRM screens.</Text>
-          <Link href="/login" asChild>
-            <Pressable style={styles.primaryButton}>
-              <Text style={styles.primaryButtonText}>Login</Text>
-            </Pressable>
-          </Link>
-        </View>
-      )}
+          </View>
+        ) : (
+          <View style={styles.panel}>
+            <Text style={styles.panelTitle}>Start your sales day</Text>
+            <Text style={styles.muted}>Login to access protected CRM screens.</Text>
+            <Link href="/login" asChild>
+              <Pressable style={styles.primaryButton}>
+                <Text style={styles.primaryButtonText}>Login</Text>
+              </Pressable>
+            </Link>
+          </View>
+        )}
+      </View>
     </SafeAreaView>
   );
 }
@@ -56,12 +60,21 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
     padding: 20,
-    gap: 24,
     backgroundColor: '#F6F7F9',
+  },
+  content: {
+    flex: 1,
+    gap: 24,
+  },
+  wideContent: {
+    justifyContent: 'center',
   },
   header: {
     gap: 10,
     paddingTop: 28,
+  },
+  wideHeader: {
+    paddingTop: 0,
   },
   eyebrow: {
     color: '#176B87',
@@ -74,6 +87,10 @@ const styles = StyleSheet.create({
     fontSize: 34,
     lineHeight: 40,
     fontWeight: '800',
+  },
+  wideTitle: {
+    fontSize: 42,
+    lineHeight: 48,
   },
   subtitle: {
     color: '#586370',

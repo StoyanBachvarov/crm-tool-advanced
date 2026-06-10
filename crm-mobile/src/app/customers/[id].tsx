@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Customer, getCustomer } from '@/lib/api';
 import { formatDate, titleCase } from '@/lib/format';
+import { useResponsiveLayout } from '@/lib/responsive';
 import { ProtectedRoute, useSession } from '@/lib/session';
 
 export default function CustomerDetailsScreen() {
@@ -18,6 +19,7 @@ export default function CustomerDetailsScreen() {
 function CustomerDetailsContent() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { token } = useSession();
+  const { containerStyle, isWide } = useResponsiveLayout(1120);
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -61,31 +63,37 @@ function CustomerDetailsContent() {
 
   return (
     <SafeAreaView style={styles.screen}>
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView contentContainerStyle={[styles.content, containerStyle]}>
         <View style={styles.header}>
           <Text style={styles.title}>{customer.companyName}</Text>
           <Text style={styles.status}>{titleCase(customer.status)}</Text>
         </View>
 
-        <Info label="Main contact" value={customer.mainContactName} />
-        <Info label="Position" value={customer.contactPosition} />
-        <Info label="Phone" value={customer.phone} />
-        <Info label="Email" value={customer.email} />
-        <Info label="Industry" value={customer.industrySector} />
-        <Info label="Sales rep" value={customer.salesRepName} />
-        <Info label="Last activity" value={formatDate(customer.lastActivityDate)} />
-        <Info label="Delivery address" value={customer.deliveryAddress} />
-        <Info label="Administrative address" value={customer.administrativeAddress} />
-        <Info label="Communication address" value={customer.communicationAddress} />
-        <Info label="Notes" value={customer.notes} />
+        <View style={[styles.infoGrid, isWide && styles.infoGridWide]}>
+          <Info label="Main contact" value={customer.mainContactName} wide={isWide} />
+          <Info label="Position" value={customer.contactPosition} wide={isWide} />
+          <Info label="Phone" value={customer.phone} wide={isWide} />
+          <Info label="Email" value={customer.email} wide={isWide} />
+          <Info label="Industry" value={customer.industrySector} wide={isWide} />
+          <Info label="Sales rep" value={customer.salesRepName} wide={isWide} />
+          <Info label="Last activity" value={formatDate(customer.lastActivityDate)} wide={isWide} />
+          <Info label="Delivery address" value={customer.deliveryAddress} wide={isWide} />
+          <Info
+            label="Administrative address"
+            value={customer.administrativeAddress}
+            wide={isWide}
+          />
+          <Info label="Communication address" value={customer.communicationAddress} wide={isWide} />
+          <Info label="Notes" value={customer.notes} wide={isWide} />
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
 }
 
-function Info({ label, value }: { label: string; value?: string | null }) {
+function Info({ label, value, wide = false }: { label: string; value?: string | null; wide?: boolean }) {
   return (
-    <View style={styles.infoCard}>
+    <View style={[styles.infoCard, wide && styles.infoCardWide]}>
       <Text style={styles.label}>{label}</Text>
       <Text style={styles.value}>{value || 'Not set'}</Text>
     </View>
@@ -137,6 +145,17 @@ const styles = StyleSheet.create({
     backgroundColor: '#ffffff',
     borderWidth: 1,
     borderColor: '#E0E4EA',
+  },
+  infoGrid: {
+    gap: 10,
+  },
+  infoGridWide: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
+  infoCardWide: {
+    flexBasis: '32%',
+    flexGrow: 1,
   },
   label: {
     color: '#586370',

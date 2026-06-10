@@ -13,6 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Activity, listActivities } from '@/lib/api';
 import { formatDate, formatTime, titleCase } from '@/lib/format';
+import { useResponsiveLayout } from '@/lib/responsive';
 import { ProtectedRoute, useSession } from '@/lib/session';
 
 const pageSize = 10;
@@ -27,6 +28,7 @@ export default function ActivitiesScreen() {
 
 function ActivitiesContent() {
   const { token } = useSession();
+  const { containerStyle, isWide } = useResponsiveLayout(1120);
   const [activities, setActivities] = useState<Activity[]>([]);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
@@ -77,7 +79,7 @@ function ActivitiesContent() {
 
   return (
     <SafeAreaView style={styles.screen}>
-      <View style={styles.header}>
+      <View style={[styles.header, containerStyle]}>
         <Text style={styles.title}>Activities</Text>
         <Text style={styles.subtitle}>Active customer activities</Text>
       </View>
@@ -90,15 +92,23 @@ function ActivitiesContent() {
         </View>
       ) : (
         <FlatList
+          key={isWide ? 'wide' : 'narrow'}
           data={activities}
           keyExtractor={(item) => String(item.id)}
+          numColumns={isWide ? 2 : 1}
+          columnWrapperStyle={isWide ? styles.columnWrapper : undefined}
           refreshControl={
             <RefreshControl refreshing={isRefreshing} onRefresh={() => loadActivities(1, true)} />
           }
-          contentContainerStyle={styles.listContent}
+          contentContainerStyle={[styles.listContent, containerStyle]}
           renderItem={({ item }) => (
             <Link href={`/activities/${item.id}`} asChild>
-              <Pressable style={({ pressed }) => [styles.card, pressed && styles.pressed]}>
+              <Pressable
+                style={({ pressed }) => [
+                  styles.card,
+                  isWide && styles.wideCard,
+                  pressed && styles.pressed,
+                ]}>
                 <View style={styles.cardHeader}>
                   <View style={styles.dateBox}>
                     <Text style={styles.dateText}>{formatDate(item.startDate)}</Text>
@@ -160,6 +170,9 @@ const styles = StyleSheet.create({
     gap: 10,
     paddingBottom: 28,
   },
+  columnWrapper: {
+    gap: 10,
+  },
   card: {
     padding: 14,
     borderRadius: 8,
@@ -167,9 +180,13 @@ const styles = StyleSheet.create({
     borderColor: '#E0E4EA',
     backgroundColor: '#ffffff',
   },
+  wideCard: {
+    flex: 1,
+  },
   cardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
+    flexWrap: 'wrap',
     gap: 12,
   },
   dateBox: {

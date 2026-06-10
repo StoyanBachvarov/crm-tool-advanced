@@ -4,6 +4,7 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { apiBaseUrl } from '@/lib/api';
+import { useResponsiveLayout } from '@/lib/responsive';
 import { useSession } from '@/lib/session';
 
 export default function LoginScreen() {
@@ -13,6 +14,7 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('pass123');
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { containerStyle, isWide } = useResponsiveLayout(520);
 
   if (isAuthenticated) {
     return <Redirect href="/" />;
@@ -34,48 +36,50 @@ export default function LoginScreen() {
 
   return (
     <SafeAreaView style={styles.screen}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Login</Text>
-        <Text style={styles.subtitle}>Use your CRM account to access protected mobile screens.</Text>
+      <View style={[styles.content, containerStyle, isWide && styles.wideContent]}>
+        <View style={styles.header}>
+          <Text style={styles.title}>Login</Text>
+          <Text style={styles.subtitle}>Use your CRM account to access protected mobile screens.</Text>
+        </View>
+
+        <View style={styles.form}>
+          <TextInput
+            autoCapitalize="none"
+            autoComplete="email"
+            keyboardType="email-address"
+            onChangeText={setEmail}
+            placeholder="Email"
+            style={styles.input}
+            value={email}
+          />
+          <TextInput
+            autoCapitalize="none"
+            onChangeText={setPassword}
+            placeholder="Password"
+            secureTextEntry
+            style={styles.input}
+            value={password}
+          />
+
+          {error ? <Text style={styles.error}>{error}</Text> : null}
+
+          <Pressable
+            disabled={isSubmitting}
+            onPress={handleLogin}
+            style={({ pressed }) => [
+              styles.primaryButton,
+              (pressed || isSubmitting) && styles.buttonPressed,
+            ]}>
+            {isSubmitting ? (
+              <ActivityIndicator color="#ffffff" />
+            ) : (
+              <Text style={styles.primaryButtonText}>Login</Text>
+            )}
+          </Pressable>
+        </View>
+
+        <Text style={styles.apiText}>API: {apiBaseUrl}</Text>
       </View>
-
-      <View style={styles.form}>
-        <TextInput
-          autoCapitalize="none"
-          autoComplete="email"
-          keyboardType="email-address"
-          onChangeText={setEmail}
-          placeholder="Email"
-          style={styles.input}
-          value={email}
-        />
-        <TextInput
-          autoCapitalize="none"
-          onChangeText={setPassword}
-          placeholder="Password"
-          secureTextEntry
-          style={styles.input}
-          value={password}
-        />
-
-        {error ? <Text style={styles.error}>{error}</Text> : null}
-
-        <Pressable
-          disabled={isSubmitting}
-          onPress={handleLogin}
-          style={({ pressed }) => [
-            styles.primaryButton,
-            (pressed || isSubmitting) && styles.buttonPressed,
-          ]}>
-          {isSubmitting ? (
-            <ActivityIndicator color="#ffffff" />
-          ) : (
-            <Text style={styles.primaryButtonText}>Login</Text>
-          )}
-        </Pressable>
-      </View>
-
-      <Text style={styles.apiText}>API: {apiBaseUrl}</Text>
     </SafeAreaView>
   );
 }
@@ -84,8 +88,14 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
     padding: 20,
-    gap: 22,
     backgroundColor: '#F6F7F9',
+  },
+  content: {
+    flex: 1,
+    gap: 22,
+  },
+  wideContent: {
+    justifyContent: 'center',
   },
   header: {
     gap: 8,
