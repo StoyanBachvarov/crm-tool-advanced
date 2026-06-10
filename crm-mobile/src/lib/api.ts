@@ -69,15 +69,50 @@ const configuredBaseUrl =
 
 export const apiBaseUrl = (configuredBaseUrl || 'http://localhost:3000/api').replace(/\/$/, '');
 
+function isLocalApiUrl(value: string) {
+  return /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?(\/|$)/i.test(value);
+}
+
+function isLocalBrowserHost() {
+  const location = globalThis.location;
+
+  return (
+    !location ||
+    location.hostname === 'localhost' ||
+    location.hostname === '127.0.0.1' ||
+    location.hostname.endsWith('.local')
+  );
+}
+
+function getApiBaseUrl() {
+  if (isLocalApiUrl(apiBaseUrl) && !isLocalBrowserHost()) {
+    throw new Error(
+      'Mobile API URL is set to localhost. Set EXPO_PUBLIC_API_BASE_URL in Netlify to your deployed CRM web API URL, for example https://your-crm-web-site.netlify.app/api, then redeploy the mobile app.'
+    );
+  }
+
+  return apiBaseUrl;
+}
+
 async function request<T>(path: string, options: RequestInit = {}, token?: string): Promise<T> {
-  const response = await fetch(`${apiBaseUrl}${path}`, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...options.headers,
-    },
-  });
+  let response: Response;
+
+  try {
+    response = await fetch(`${getApiBaseUrl()}${path}`, {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...options.headers,
+      },
+    });
+  } catch (error) {
+    if (error instanceof Error) {
+      throw error;
+    }
+
+    throw new Error('Unable to reach the CRM API. Check the mobile API URL and network access.');
+  }
 
   const payload = await response.json().catch(() => null);
 
