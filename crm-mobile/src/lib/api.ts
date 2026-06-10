@@ -69,8 +69,14 @@ const configuredBaseUrl =
 
 export const apiBaseUrl = (configuredBaseUrl || 'http://localhost:3000/api').replace(/\/$/, '');
 
+class ApiConfigurationError extends Error {}
+
 function isLocalApiUrl(value: string) {
   return /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?(\/|$)/i.test(value);
+}
+
+function isHttpApiUrl(value: string) {
+  return /^http:\/\//i.test(value);
 }
 
 function isLocalBrowserHost() {
@@ -86,8 +92,14 @@ function isLocalBrowserHost() {
 
 function getApiBaseUrl() {
   if (isLocalApiUrl(apiBaseUrl) && !isLocalBrowserHost()) {
-    throw new Error(
+    throw new ApiConfigurationError(
       'Mobile API URL is set to localhost. Set EXPO_PUBLIC_API_BASE_URL in Netlify to your deployed CRM web API URL, for example https://your-crm-web-site.netlify.app/api, then redeploy the mobile app.'
+    );
+  }
+
+  if (isHttpApiUrl(apiBaseUrl) && globalThis.location?.protocol === 'https:') {
+    throw new ApiConfigurationError(
+      `Mobile API URL is using http while the mobile app is loaded over https: ${apiBaseUrl}. Set EXPO_PUBLIC_API_BASE_URL to the https CRM web API URL, ending in /api, then redeploy.`
     );
   }
 
@@ -107,11 +119,13 @@ async function request<T>(path: string, options: RequestInit = {}, token?: strin
       },
     });
   } catch (error) {
-    if (error instanceof Error) {
+    if (error instanceof ApiConfigurationError) {
       throw error;
     }
 
-    throw new Error('Unable to reach the CRM API. Check the mobile API URL and network access.');
+    throw new Error(
+      `Unable to reach the CRM API at ${apiBaseUrl}. Confirm EXPO_PUBLIC_API_BASE_URL in the mobile Netlify site points to your deployed CRM web API, for example https://your-crm-web-site.netlify.app/api, then redeploy.`
+    );
   }
 
   const payload = await response.json().catch(() => null);
